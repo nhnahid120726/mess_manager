@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "666532902328",
+    "project_id": "mess-management-app-5c883",
+    "storage_bucket": "mess-management-app-5c883.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:666532902328:android:2dec8d69eeb350f0644b4d",
+        "android_client_info": {
+          "package_name": "com.example.mas_manegment"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "666532902328-b51ki1rccuf3v5gcte6eija7shdhlram.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2Ei5yH-XZCjWXzfT1vifP4R9fcpSz3No"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "666532902328-b51ki1rccuf3v5gcte6eija7shdhlram.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "666532902328-96a9g7r7v968o6n8smmbcbaki7q913kr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.messManagement"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:666532902328:android:17c42509dadddf4d644b4d",
+        "android_client_info": {
+          "package_name": "com.example.mess_management"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "666532902328-b51ki1rccuf3v5gcte6eija7shdhlram.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC2Ei5yH-XZCjWXzfT1vifP4R9fcpSz3No"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "666532902328-b51ki1rccuf3v5gcte6eija7shdhlram.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "666532902328-96a9g7r7v968o6n8smmbcbaki7q913kr.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.messManagement"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
