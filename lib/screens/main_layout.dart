@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // SystemNavigator এর জন্য
+import 'package:flutter/services.dart';
 
+import '../core/constants/app_colors.dart';
 import 'home_screen.dart';
 import 'market_screen.dart';
 import 'accounts_screen.dart';
@@ -28,12 +29,12 @@ class _MainLayoutState extends State<MainLayout> {
 
   @override
   Widget build(BuildContext context) {
-    const Color primary = Color(0xFF087F8C);
+    const Color primary = AppColors.primary;
 
     return PopScope(
       canPop: false,
       // Android-এর ডিফল্ট ব্যাক বাটন সরাসরি অ্যাপ বন্ধ করা ঠেকাবে
-      onPopInvoked: (bool didPop) async {
+      onPopInvokedWithResult: (bool didPop, Object? result) async {
         if (didPop) return;
 
         if (_currentIndex != 0) {
@@ -124,7 +125,7 @@ class _MainLayoutState extends State<MainLayout> {
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.04),
+                color: Colors.black.withValues(alpha: 0.04),
                 blurRadius: 20,
                 offset: const Offset(0, -5),
               ),
@@ -138,7 +139,7 @@ class _MainLayoutState extends State<MainLayout> {
             child: NavigationBarTheme(
               data: NavigationBarThemeData(
                 backgroundColor: Colors.white,
-                indicatorColor: primary.withOpacity(0.15),
+                indicatorColor: primary.withValues(alpha: 0.15),
                 labelTextStyle: WidgetStateProperty.resolveWith((states) {
                   if (states.contains(WidgetState.selected)) {
                     return const TextStyle(

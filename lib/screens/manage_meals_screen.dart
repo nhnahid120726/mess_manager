@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+
+import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 
 class ManageMealsScreen extends StatefulWidget {
@@ -18,10 +20,10 @@ class _ManageMealsScreenState extends State<ManageMealsScreen> {
   Map<String, int> _mealCounts = {};
   bool _isLoading = true;
 
-  static const Color primary = Color(0xFF087F8C);
-  static const Color dark = Color(0xFF173B55);
-  static const Color muted = Color(0xFF7186A5);
-  static const Color pageBg = Color(0xFFF3F7FF);
+  static const Color primary = AppColors.primary;
+  static const Color dark = AppColors.textPrimary;
+  static const Color muted = AppColors.textSecondary;
+  static const Color pageBg = AppColors.background;
 
   @override
   void initState() {
@@ -95,7 +97,7 @@ class _ManageMealsScreenState extends State<ManageMealsScreen> {
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.03),
+                        color: Colors.black.withValues(alpha: 0.03),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),
@@ -109,7 +111,7 @@ class _ManageMealsScreenState extends State<ManageMealsScreen> {
                           width: 45,
                           height: 45,
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF59E0B).withOpacity(0.15),
+                            color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(14),
                           ),
                           child: const Icon(Icons.restaurant_rounded, color: Color(0xFFD97706)),

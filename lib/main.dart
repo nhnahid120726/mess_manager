@@ -24,6 +24,7 @@ class MessApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        fontFamily: 'NotoSansBengali',
         useMaterial3: true,
       ),
       home: const AuthWrapper(),
@@ -41,8 +42,6 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final AuthService _authService = AuthService();
-  bool _isCheckingAuth = false;
-  bool _isAuthorized = false;
 
   @override
   Widget build(BuildContext context) {

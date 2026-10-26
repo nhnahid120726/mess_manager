@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 
 class MembersScreen extends StatefulWidget {
@@ -11,10 +12,10 @@ class MembersScreen extends StatefulWidget {
 class _MembersScreenState extends State<MembersScreen> {
   final FinancialService _financialService = FinancialService();
 
-  static const Color primary = Color(0xFF087F8C);
-  static const Color dark = Color(0xFF173B55);
-  static const Color muted = Color(0xFF7186A5);
-  static const Color pageBg = Color(0xFFF3F7FF);
+  static const Color primary = AppColors.primary;
+  static const Color dark = AppColors.textPrimary;
+  static const Color muted = AppColors.textSecondary;
+  static const Color pageBg = AppColors.background;
 
   @override
   Widget build(BuildContext context) {
@@ -61,7 +62,7 @@ class _MembersScreenState extends State<MembersScreen> {
                     Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: primary.withOpacity(0.1),
+                        color: primary.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(Icons.groups_rounded, color: primary, size: 20),
@@ -99,7 +100,7 @@ class _MembersScreenState extends State<MembersScreen> {
                         borderRadius: BorderRadius.circular(20),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.03),
+                            color: Colors.black.withValues(alpha: 0.03),
                             blurRadius: 15,
                             offset: const Offset(0, 5),
                           ),

@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import '../core/constants/app_colors.dart';
 import '../services/auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -118,7 +119,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
                           color: const Color(0xFF9B8AFF)
-                              .withOpacity(0.13),
+                              .withValues(alpha: 0.13),
                         ),
                       ),
                     ),
@@ -131,7 +132,7 @@ class _LoginScreenState extends State<LoginScreen> {
                         height: 190,
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: teal.withOpacity(0.10),
+                          color: teal.withValues(alpha: 0.10),
                         ),
                       ),
                     ),
@@ -174,7 +175,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   borderRadius: BorderRadius.circular(35),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: primary.withOpacity(0.25),
+                                      color: primary.withValues(alpha: 0.25),
                                       blurRadius: 28,
                                       offset: const Offset(0, 12),
                                     ),
@@ -249,7 +250,7 @@ class _LoginScreenState extends State<LoginScreen> {
                                   boxShadow: [
                                     BoxShadow(
                                       color: const Color(0xFF34366B)
-                                          .withOpacity(0.08),
+                                          .withValues(alpha: 0.08),
                                       blurRadius: 35,
                                       offset: const Offset(0, 15),
                                     ),
@@ -332,11 +333,11 @@ class _LoginScreenState extends State<LoginScreen> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: primary,
                                           disabledBackgroundColor:
-                                          primary.withOpacity(0.7),
+                                          primary.withValues(alpha: 0.7),
                                           foregroundColor: Colors.white,
                                           elevation: 5,
                                           shadowColor:
-                                          primary.withOpacity(0.3),
+                                          primary.withValues(alpha: 0.3),
                                           shape: RoundedRectangleBorder(
                                             borderRadius:
                                             BorderRadius.circular(17),

@@ -2,14 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 import '../services/auth_service.dart';
-
-// ============================================================
-// ডিপোজিট যোগ করার পেজ
-// UI আধুনিক করা হয়েছে। Firebase ও FinancialService-এর
-// বিদ্যমান ডেটা ফিল্ড এবং মেথড অপরিবর্তিত রাখা হয়েছে।
-// ============================================================
 
 class AddDepositScreen extends StatefulWidget {
   final bool isAdmin;
@@ -21,15 +16,12 @@ class AddDepositScreen extends StatefulWidget {
 }
 
 class _AddDepositScreenState extends State<AddDepositScreen> {
-  // বিদ্যমান সার্ভিস
   final FinancialService _financialService = FinancialService();
   final AuthService _authService = AuthService();
 
-  // ফর্ম ও ইনপুট কন্ট্রোলার
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _amountController = TextEditingController();
 
-  // ডিপোজিটের তথ্য
   String _selectedMember = '';
   String _paymentMethod = 'Cash';
 
@@ -38,12 +30,21 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
   List<String> _memberEmails = [];
 
-  // UI-এর জন্য নির্ধারিত রং
-  static const Color _primary = Color(0xFF0F766E);
-  static const Color _primaryDark = Color(0xFF115E59);
-  static const Color _background = Color(0xFFF5F7FA);
-  static const Color _textDark = Color(0xFF172B3A);
-  static const Color _textMuted = Color(0xFF718096);
+  // ============================================================
+  // MODERN UI COLORS
+  // ============================================================
+
+  static const Color primary = AppColors.primary;
+  static const Color primaryDark = AppColors.primaryDark;
+  static const Color background = AppColors.background;
+  static const Color cardColor = AppColors.surface;
+  static const Color textDark = AppColors.textPrimary;
+  static const Color textMuted = AppColors.textSecondary;
+
+  static const Color border = Color(0xFFE6ECF3);
+
+  static const Color success = Color(0xFF0BB77A);
+  static const Color warning = Color(0xFFF59E0B);
 
   @override
   void initState() {
@@ -51,11 +52,10 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     _fetchMembers();
   }
 
-  // ==========================================================
-  // Firebase থেকে সদস্যদের তথ্য লোড করা
-  // Admin সব সদস্য নির্বাচন করতে পারবেন।
-  // সাধারণ সদস্য শুধু নিজের ডিপোজিট জমা দিতে পারবেন।
-  // ==========================================================
+  // ============================================================
+  // FETCH MEMBERS
+  // ============================================================
+
   Future<void> _fetchMembers() async {
     try {
       final QuerySnapshot snapshot = await FirebaseFirestore.instance
@@ -71,13 +71,10 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
           final currentEmail = _authService.currentUser?.email;
 
           if (!widget.isAdmin) {
-            // আগের নিয়ম অনুযায়ী সাধারণ সদস্যের জন্য নিজের ইমেইল
             _selectedMember = currentEmail ?? _memberEmails.first;
 
-            // সাধারণ সদস্যের তালিকা নিজের মধ্যেই সীমাবদ্ধ
             _memberEmails = [_selectedMember];
           } else {
-            // অ্যাডমিনের জন্য সব সদস্য নির্বাচনযোগ্য
             _selectedMember =
                 currentEmail != null && _memberEmails.contains(currentEmail)
                 ? currentEmail
@@ -90,7 +87,9 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isFetchingMembers = false);
+      setState(() {
+        _isFetchingMembers = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -101,9 +100,10 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     }
   }
 
-  // ==========================================================
-  // সব ইনপুট ফিল্ডের একই ডিজাইন
-  // ==========================================================
+  // ============================================================
+  // INPUT DECORATION
+  // ============================================================
+
   InputDecoration _inputDecoration({
     required String label,
     required String hint,
@@ -112,75 +112,100 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, color: _primary),
+
+      prefixIcon: Icon(icon, color: primary, size: 21),
+
       filled: true,
-      fillColor: Colors.white,
+      fillColor: const Color(0xFFFBFCFE),
+
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-      labelStyle: const TextStyle(color: _textMuted),
-      hintStyle: const TextStyle(color: Color(0xFFADB5C0), fontSize: 13),
+
+      labelStyle: const TextStyle(
+        color: textMuted,
+        fontSize: 13,
+        fontWeight: FontWeight.w500,
+      ),
+
+      hintStyle: const TextStyle(color: Color(0xFFAAB5C3), fontSize: 13),
+
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFE5EAF0)),
+        borderSide: const BorderSide(color: border),
       ),
+
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFFE5EAF0)),
+        borderSide: const BorderSide(color: border),
       ),
+
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: _primary, width: 1.5),
+        borderSide: const BorderSide(color: primary, width: 1.6),
       ),
+
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: const BorderSide(color: Colors.redAccent),
       ),
+
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.redAccent),
+        borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
       ),
     );
   }
 
-  // ==========================================================
-  // সাদা কার্ডের ডিজাইন
-  // ==========================================================
+  // ============================================================
+  // SECTION CARD
+  // ============================================================
+
   Widget _sectionCard({required Widget child}) {
     return Container(
       width: double.infinity,
+
       padding: const EdgeInsets.all(18),
+
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: cardColor,
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: const Color(0xFFEDF0F4)),
+
+        border: Border.all(color: border),
+
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF203040).withValues(alpha: 0.035),
-            blurRadius: 18,
-            offset: const Offset(0, 5),
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 22,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
+
       child: child,
     );
   }
 
-  // ==========================================================
-  // সেকশনের আইকন ও শিরোনাম
-  // ==========================================================
+  // ============================================================
+  // SECTION TITLE
+  // ============================================================
+
   Widget _sectionTitle(IconData icon, String title, {String? subtitle}) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 42,
-          height: 42,
+          width: 44,
+          height: 44,
+
           decoration: BoxDecoration(
-            color: const Color(0xFFE5F5F1),
-            borderRadius: BorderRadius.circular(13),
+            color: const Color(0xFFE8F7F5),
+            borderRadius: BorderRadius.circular(14),
           ),
-          child: Icon(icon, color: _primary, size: 22),
+
+          child: Icon(icon, color: primary, size: 22),
         ),
+
         const SizedBox(width: 12),
+
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -188,18 +213,21 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
               Text(
                 title,
                 style: const TextStyle(
-                  color: _textDark,
+                  color: textDark,
                   fontSize: 16,
-                  fontWeight: FontWeight.w700,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
                 ),
               ),
+
               if (subtitle != null) ...[
-                const SizedBox(height: 4),
+                const SizedBox(height: 5),
+
                 Text(
                   subtitle,
                   style: const TextStyle(
-                    color: _textMuted,
-                    fontSize: 12,
+                    color: textMuted,
+                    fontSize: 11.5,
                     height: 1.5,
                   ),
                 ),
@@ -211,69 +239,72 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // ==========================================================
-  // অ্যাডমিন ও সাধারণ সদস্যের জন্য আলাদা তথ্য ব্যানার
-  // ==========================================================
-  Widget _buildStatusBanner() {
-    final Color statusColor = widget.isAdmin
-        ? const Color(0xFF15803D)
-        : const Color(0xFFC77713);
+  // ============================================================
+  // STATUS BANNER
+  // ============================================================
 
-    final Color statusBackground = widget.isAdmin
-        ? const Color(0xFFEAF8EF)
-        : const Color(0xFFFFF6E8);
+  Widget _buildStatusBanner() {
+    final bool admin = widget.isAdmin;
+
+    final Color color = admin ? success : warning;
+
+    final Color bg = admin ? const Color(0xFFEAFBF4) : const Color(0xFFFFF7E7);
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(17),
+
+      padding: const EdgeInsets.all(16),
+
       decoration: BoxDecoration(
-        color: statusBackground,
+        color: bg,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: statusColor.withValues(alpha: 0.20)),
+
+        border: Border.all(color: color.withValues(alpha: 0.18)),
       ),
+
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 42,
-            height: 42,
+            width: 43,
+            height: 43,
+
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.8),
+              color: Colors.white.withValues(alpha: 0.85),
               borderRadius: BorderRadius.circular(13),
             ),
+
             child: Icon(
-              widget.isAdmin
+              admin
                   ? Icons.admin_panel_settings_rounded
                   : Icons.hourglass_top_rounded,
-              color: statusColor,
-              size: 23,
+              color: color,
+              size: 22,
             ),
           ),
+
           const SizedBox(width: 12),
+
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  widget.isAdmin
-                      ? 'অ্যাডমিন মোড'
-                      : 'ডিপোজিট অনুমোদনের অপেক্ষায়',
+                  admin ? 'অ্যাডমিন মোড' : 'ডিপোজিট অনুমোদনের অপেক্ষায়',
                   style: TextStyle(
-                    color: statusColor,
+                    color: color,
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                   ),
                 ),
+
                 const SizedBox(height: 5),
+
                 Text(
-                  widget.isAdmin
+                  admin
                       ? 'অ্যাডমিন হিসেবে যোগ করা ডিপোজিট স্বয়ংক্রিয়ভাবে নিশ্চিত হবে।'
                       : 'আপনার ডিপোজিটের অনুরোধ অ্যাডমিন নিশ্চিত না করা পর্যন্ত অপেক্ষমাণ থাকবে।',
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    height: 1.7,
-                  ),
+                  style: TextStyle(color: color, fontSize: 11.5, height: 1.65),
                 ),
               ],
             ),
@@ -283,10 +314,10 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // ==========================================================
-  // পেমেন্ট মেথড নির্বাচন করার কার্ড
-  // Cash, bKash, Nagad ও Bank আগের মতোই রাখা হয়েছে।
-  // ==========================================================
+  // ============================================================
+  // PAYMENT OPTION
+  // ============================================================
+
   Widget _paymentOption({
     required String value,
     required String title,
@@ -295,102 +326,138 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
   }) {
     final bool selected = _paymentMethod == value;
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () {
-        setState(() => _paymentMethod = value);
-      },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: const EdgeInsets.all(13),
-        decoration: BoxDecoration(
-          color: selected ? const Color(0xFFF0F9F7) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: selected ? const Color(0xFF83CDBA) : const Color(0xFFE5EAF0),
-            width: selected ? 1.5 : 1,
+    return Material(
+      color: Colors.transparent,
+
+      child: InkWell(
+        borderRadius: BorderRadius.circular(17),
+
+        onTap: () {
+          setState(() {
+            _paymentMethod = value;
+          });
+        },
+
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+
+          padding: const EdgeInsets.all(13),
+
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFEFF9F7) : Colors.white,
+
+            borderRadius: BorderRadius.circular(17),
+
+            border: Border.all(
+              color: selected ? const Color(0xFF75C6B7) : border,
+
+              width: selected ? 1.5 : 1,
+            ),
           ),
-        ),
-        child: Row(
-          children: [
-            Container(
-              width: 43,
-              height: 43,
-              decoration: BoxDecoration(
-                color: selected
-                    ? const Color(0xFFD8F0E9)
-                    : const Color(0xFFF2F5F8),
-                borderRadius: BorderRadius.circular(13),
+
+          child: Row(
+            children: [
+              Container(
+                width: 45,
+                height: 45,
+
+                decoration: BoxDecoration(
+                  color: selected
+                      ? const Color(0xFFD9F1EB)
+                      : const Color(0xFFF3F6F9),
+
+                  borderRadius: BorderRadius.circular(14),
+                ),
+
+                child: Icon(
+                  icon,
+                  color: selected ? primary : textMuted,
+                  size: 22,
+                ),
               ),
-              child: Icon(
-                icon,
-                color: selected ? _primary : _textMuted,
-                size: 22,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      color: _textDark,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
+
+              const SizedBox(width: 12),
+
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        color: textDark,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w800,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: const TextStyle(color: _textMuted, fontSize: 11),
-                  ),
-                ],
+
+                    const SizedBox(height: 4),
+
+                    Text(
+                      subtitle,
+                      style: const TextStyle(color: textMuted, fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Icon(
-              selected
-                  ? Icons.radio_button_checked_rounded
-                  : Icons.radio_button_off_rounded,
-              color: selected ? _primary : const Color(0xFFB5BEC8),
-              size: 22,
-            ),
-          ],
+
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 150),
+
+                child: Icon(
+                  selected
+                      ? Icons.radio_button_checked_rounded
+                      : Icons.radio_button_off_rounded,
+
+                  key: ValueKey(selected),
+
+                  color: selected ? primary : const Color(0xFFB7C0CA),
+
+                  size: 23,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ==========================================================
-  // ডিপোজিট সেভ করা
-  // আগের addDeposit মেথড ও সব প্যারামিটার অপরিবর্তিত।
-  // ==========================================================
+  // ============================================================
+  // SUBMIT DEPOSIT
+  // ============================================================
+
   Future<void> _submitDeposit() async {
     if (_isLoading) return;
 
     FocusScope.of(context).unfocus();
 
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_memberEmails.isEmpty || !_memberEmails.contains(_selectedMember)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('সঠিক সদস্য নির্বাচন করুন।')),
-      );
+    if (!_formKey.currentState!.validate()) {
       return;
     }
 
-    setState(() => _isLoading = true);
+    if (_memberEmails.isEmpty || !_memberEmails.contains(_selectedMember)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('সঠিক সদস্য নির্বাচন করুন।'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+
+      return;
+    }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      // ইনপুট থেকে টাকার পরিমাণ নেওয়া
       final double amount = double.parse(_amountController.text.trim());
 
-      // ডিপোজিট যোগকারী বর্তমান ব্যবহারকারী
       final String currentUserEmail =
           _authService.currentUser?.email ?? 'Unknown';
 
-      // বিদ্যমান সার্ভিসে আগের মতো তথ্য পাঠানো হচ্ছে
+      // BACKEND LOGIC UNCHANGED
       final bool success = await _financialService.addDeposit(
         memberEmail: _selectedMember,
         amountInTaka: amount,
@@ -401,7 +468,9 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       if (success) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -411,98 +480,135 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                   ? 'ডিপোজিট সফলভাবে যোগ হয়েছে!'
                   : 'ডিপোজিটের অনুরোধ অ্যাডমিনের কাছে পাঠানো হয়েছে!',
             ),
-            backgroundColor: _primary,
+            backgroundColor: primary,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
 
         Navigator.pop(context);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('ডিপোজিট যোগ করা যায়নি। আবার চেষ্টা করুন।'),
+          SnackBar(
+            content: const Text('ডিপোজিট যোগ করা যায়নি। আবার চেষ্টা করুন।'),
             backgroundColor: Colors.redAccent,
             behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
     } catch (e) {
       if (!mounted) return;
 
-      setState(() => _isLoading = false);
+      setState(() {
+        _isLoading = false;
+      });
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('একটি সমস্যা হয়েছে। তথ্য যাচাই করে আবার চেষ্টা করুন।'),
+        SnackBar(
+          content: const Text(
+            'একটি সমস্যা হয়েছে। তথ্য যাচাই করে আবার চেষ্টা করুন।',
+          ),
           backgroundColor: Colors.redAccent,
           behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       );
     }
   }
 
-  // ==========================================================
-  // পেজের মূল ডিজাইন
-  // ==========================================================
+  // ============================================================
+  // MAIN UI
+  // ============================================================
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _background,
+      backgroundColor: background,
 
-      // উপরের অ্যাপ বার
       appBar: AppBar(
         elevation: 0,
-        backgroundColor: _primary,
-        foregroundColor: Colors.white,
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+
+        foregroundColor: textDark,
+
         centerTitle: false,
+
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded),
+          onPressed: () {
+            Navigator.maybePop(context);
+          },
+        ),
+
         title: const Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               'ডিপোজিট যোগ করুন',
-              style: TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+              style: TextStyle(
+                color: textDark,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
             ),
+
             SizedBox(height: 2),
+
             Text(
               'মেসের জমার হিসাব পরিচালনা করুন',
-              style: TextStyle(fontSize: 11, color: Colors.white70),
+              style: TextStyle(
+                color: textMuted,
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
             ),
           ],
         ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
-          onPressed: () => Navigator.maybePop(context),
+
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+
+          child: Container(height: 1, color: border),
         ),
       ),
 
-      // সদস্যদের তথ্য লোড হওয়ার অবস্থা
       body: _isFetchingMembers
-          ? const Center(child: CircularProgressIndicator(color: _primary))
+          ? _buildLoadingState()
           : _memberEmails.isEmpty
           ? _buildEmptyMembers()
           : SafeArea(
               child: Form(
                 key: _formKey,
+
                 child: Column(
                   children: [
-                    // স্ক্রলযোগ্য ফর্ম
                     Expanded(
                       child: SingleChildScrollView(
-                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),
+                        physics: const BouncingScrollPhysics(),
+
+                        padding: const EdgeInsets.fromLTRB(16, 18, 16, 25),
+
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+
                           children: [
-                            // উপরের পরিচিতি ব্যানার
                             _buildHeaderBanner(),
 
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 16),
 
-                            // অ্যাডমিন বা সাধারণ সদস্যের স্ট্যাটাস
                             _buildStatusBanner(),
 
-                            const SizedBox(height: 20),
+                            const SizedBox(height: 18),
 
-                            // ১. সদস্য নির্বাচন
+                            // MEMBER
                             _sectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -518,39 +624,49 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                                   const SizedBox(height: 20),
 
                                   DropdownButtonFormField<String>(
-                                    value:
+                                    initialValue:
                                         _memberEmails.contains(_selectedMember)
                                         ? _selectedMember
                                         : null,
+
                                     isExpanded: true,
+
                                     decoration: _inputDecoration(
                                       label: 'সদস্য নির্বাচন করুন',
                                       hint: 'সদস্যের নাম',
                                       icon: Icons.person_rounded,
                                     ),
+
                                     items: _memberEmails.map((email) {
                                       return DropdownMenuItem<String>(
                                         value: email,
+
                                         child: Text(
                                           email.split('@')[0],
                                           overflow: TextOverflow.ellipsis,
                                           style: const TextStyle(
+                                            color: textDark,
                                             fontSize: 14,
-                                            color: _textDark,
+                                            fontWeight: FontWeight.w600,
                                           ),
                                         ),
                                       );
                                     }).toList(),
+
                                     validator: (value) {
                                       if (value == null ||
                                           !_memberEmails.contains(value)) {
                                         return 'একজন সদস্য নির্বাচন করুন';
                                       }
+
                                       return null;
                                     },
+
                                     onChanged: widget.isAdmin
                                         ? (value) {
-                                            if (value == null) return;
+                                            if (value == null) {
+                                              return;
+                                            }
 
                                             setState(() {
                                               _selectedMember = value;
@@ -559,35 +675,36 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                                         : null,
                                   ),
 
-                                  if (!widget.isAdmin) ...[
-                                    const SizedBox(height: 12),
-                                    const Row(
-                                      children: [
-                                        Icon(
-                                          Icons.lock_outline_rounded,
-                                          size: 15,
-                                          color: _textMuted,
-                                        ),
-                                        SizedBox(width: 6),
-                                        Expanded(
-                                          child: Text(
-                                            'সাধারণ সদস্য হিসেবে এই নির্বাচন পরিবর্তন করা যাবে না।',
-                                            style: TextStyle(
-                                              color: _textMuted,
-                                              fontSize: 11,
+                                  if (!widget.isAdmin)
+                                    const Padding(
+                                      padding: EdgeInsets.only(top: 12),
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.lock_outline_rounded,
+                                            size: 15,
+                                            color: textMuted,
+                                          ),
+                                          SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              'সাধারণ সদস্য হিসেবে এই নির্বাচন পরিবর্তন করা যাবে না।',
+                                              style: TextStyle(
+                                                color: textMuted,
+                                                fontSize: 11,
+                                              ),
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
-                                  ],
                                 ],
                               ),
                             ),
 
                             const SizedBox(height: 16),
 
-                            // ২. ডিপোজিটের পরিমাণ
+                            // AMOUNT
                             _sectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -603,15 +720,18 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
                                   TextFormField(
                                     controller: _amountController,
+
                                     keyboardType:
                                         const TextInputType.numberWithOptions(
                                           decimal: true,
                                         ),
+
                                     inputFormatters: [
                                       FilteringTextInputFormatter.allow(
                                         RegExp(r'^\d*\.?\d{0,2}'),
                                       ),
                                     ],
+
                                     decoration:
                                         _inputDecoration(
                                           label: 'টাকার পরিমাণ',
@@ -619,12 +739,14 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                                           icon: Icons.payments_rounded,
                                         ).copyWith(
                                           prefixText: '৳ ',
+
                                           prefixStyle: const TextStyle(
-                                            color: _primary,
+                                            color: primary,
                                             fontSize: 18,
-                                            fontWeight: FontWeight.w700,
+                                            fontWeight: FontWeight.w900,
                                           ),
                                         ),
+
                                     validator: (value) {
                                       if (value == null ||
                                           value.trim().isEmpty) {
@@ -647,18 +769,21 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
                                   const SizedBox(height: 12),
 
-                                  // ছোট সহায়ক তথ্য
                                   Container(
+                                    width: double.infinity,
+
                                     padding: const EdgeInsets.all(12),
+
                                     decoration: BoxDecoration(
-                                      color: const Color(0xFFF0F9F7),
+                                      color: const Color(0xFFEFF9F7),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
+
                                     child: const Row(
                                       children: [
                                         Icon(
                                           Icons.info_outline_rounded,
-                                          color: _primary,
+                                          color: primary,
                                           size: 18,
                                         ),
                                         SizedBox(width: 9),
@@ -666,8 +791,9 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                                           child: Text(
                                             'টাকার পরিমাণ সঠিকভাবে লিখুন।',
                                             style: TextStyle(
-                                              color: _primaryDark,
+                                              color: primaryDark,
                                               fontSize: 12,
+                                              fontWeight: FontWeight.w600,
                                             ),
                                           ),
                                         ),
@@ -680,7 +806,7 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
                             const SizedBox(height: 16),
 
-                            // ৩. পেমেন্ট মেথড
+                            // PAYMENT
                             _sectionCard(
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -738,7 +864,6 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                       ),
                     ),
 
-                    // নিচে স্থির Submit বাটন
                     _buildBottomButton(),
                   ],
                 ),
@@ -747,28 +872,35 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // ==========================================================
-  // উপরের গ্রেডিয়েন্ট ব্যানার
-  // ==========================================================
+  // ============================================================
+  // HEADER BANNER
+  // ============================================================
+
   Widget _buildHeaderBanner() {
     return Container(
       width: double.infinity,
+
       padding: const EdgeInsets.all(20),
+
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [_primary, _primaryDark],
+          colors: [primary, primaryDark],
+
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
+
         borderRadius: BorderRadius.circular(24),
+
         boxShadow: [
           BoxShadow(
-            color: _primary.withValues(alpha: 0.18),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: primary.withValues(alpha: 0.20),
+            blurRadius: 22,
+            offset: const Offset(0, 9),
           ),
         ],
       ),
+
       child: Row(
         children: [
           Expanded(
@@ -780,10 +912,12 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 19,
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
+
                 const SizedBox(height: 8),
+
                 const Text(
                   'সদস্যদের জমার তথ্য যোগ করুন। '
                   'মেসের আর্থিক হিসাব রাখুন গোছানোভাবে।',
@@ -793,16 +927,20 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                     height: 1.7,
                   ),
                 ),
+
                 const SizedBox(height: 12),
+
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 11,
                     vertical: 7,
                   ),
+
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
+                    color: Colors.white.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(10),
                   ),
+
                   child: const Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -817,7 +955,7 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 11,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -826,14 +964,18 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+
+          const SizedBox(width: 12),
+
           Container(
             width: 68,
             height: 68,
+
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.14),
               borderRadius: BorderRadius.circular(22),
             ),
+
             child: const Icon(
               Icons.savings_rounded,
               color: Colors.white,
@@ -845,60 +987,126 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // ==========================================================
-  // কোনো সদস্য পাওয়া না গেলে দেখানো UI
-  // ==========================================================
+  // ============================================================
+  // LOADING
+  // ============================================================
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 25,
+                  offset: const Offset(0, 10),
+                ),
+              ],
+            ),
+
+            child: const Padding(
+              padding: EdgeInsets.all(21),
+              child: CircularProgressIndicator(strokeWidth: 3, color: primary),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+
+          const Text(
+            'সদস্যদের তথ্য লোড হচ্ছে...',
+            style: TextStyle(
+              color: textDark,
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================================
+  // EMPTY MEMBERS
+  // ============================================================
+
   Widget _buildEmptyMembers() {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(28),
+
         child: Column(
           mainAxisSize: MainAxisSize.min,
+
           children: [
             Container(
-              width: 88,
-              height: 88,
+              width: 95,
+              height: 95,
+
               decoration: BoxDecoration(
-                color: const Color(0xFFE5F5F1),
+                color: const Color(0xFFEAF8F6),
                 borderRadius: BorderRadius.circular(28),
               ),
-              child: const Icon(
-                Icons.groups_rounded,
-                color: _primary,
-                size: 44,
-              ),
+
+              child: const Icon(Icons.groups_rounded, color: primary, size: 45),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 22),
+
             const Text(
               'কোনো সদস্য পাওয়া যায়নি',
               textAlign: TextAlign.center,
+
               style: TextStyle(
-                color: _textDark,
+                color: textDark,
                 fontSize: 19,
-                fontWeight: FontWeight.w800,
+                fontWeight: FontWeight.w900,
               ),
             ),
+
             const SizedBox(height: 8),
+
             const Text(
               'Firebase-এর members কালেকশন পরীক্ষা করুন।',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _textMuted, fontSize: 13, height: 1.7),
+
+              style: TextStyle(color: textMuted, fontSize: 13, height: 1.6),
             ),
-            const SizedBox(height: 20),
+
+            const SizedBox(height: 22),
+
             ElevatedButton.icon(
               onPressed: () {
-                setState(() => _isFetchingMembers = true);
+                setState(() {
+                  _isFetchingMembers = true;
+                });
+
                 _fetchMembers();
               },
+
               icon: const Icon(Icons.refresh_rounded),
+
               label: const Text('আবার চেষ্টা করুন'),
+
               style: ElevatedButton.styleFrom(
-                backgroundColor: _primary,
+                backgroundColor: primary,
                 foregroundColor: Colors.white,
+
+                elevation: 0,
+
                 padding: const EdgeInsets.symmetric(
                   horizontal: 20,
                   vertical: 14,
                 ),
+
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
@@ -910,39 +1118,54 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // ==========================================================
-  // নিচের স্থির Submit বাটন
-  // ==========================================================
+  // ============================================================
+  // BOTTOM SUBMIT BUTTON
+  // ============================================================
+
   Widget _buildBottomButton() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+
       decoration: BoxDecoration(
         color: Colors.white,
-        border: const Border(top: BorderSide(color: Color(0xFFEDF0F4))),
+
+        border: const Border(top: BorderSide(color: border)),
+
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.035),
-            blurRadius: 14,
-            offset: const Offset(0, -4),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 18,
+            offset: const Offset(0, -5),
           ),
         ],
       ),
+
       child: SafeArea(
         top: false,
+
         child: SizedBox(
           width: double.infinity,
-          height: 54,
+          height: 56,
+
           child: ElevatedButton(
             onPressed: _isLoading ? null : _submitDeposit,
+
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primary,
-              disabledBackgroundColor: const Color(0xFF8ABAB3),
+              backgroundColor: primary,
+
+              disabledBackgroundColor: const Color(0xFF91BDB8),
+
               foregroundColor: Colors.white,
+
+              disabledForegroundColor: Colors.white70,
+
               elevation: 0,
+
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(17),
               ),
             ),
+
             child: _isLoading
                 ? const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -955,12 +1178,14 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                           strokeWidth: 2.5,
                         ),
                       ),
+
                       SizedBox(width: 12),
+
                       Text(
                         'ডিপোজিট জমা হচ্ছে...',
                         style: TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ],
@@ -969,17 +1194,22 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       const Icon(Icons.save_rounded, size: 21),
-                      const SizedBox(width: 10),
+
+                      const SizedBox(width: 9),
+
                       Text(
                         widget.isAdmin
                             ? 'ডিপোজিট নিশ্চিত করে যোগ করুন'
                             : 'ডিপোজিটের অনুরোধ পাঠান',
+
                         style: const TextStyle(
                           fontSize: 15,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
+
                       const SizedBox(width: 8),
+
                       const Icon(Icons.arrow_forward_rounded, size: 19),
                     ],
                   ),
@@ -989,7 +1219,10 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
     );
   }
 
-  // পেজ বন্ধ হলে ইনপুট কন্ট্রোলার পরিষ্কার করা
+  // ============================================================
+  // DISPOSE
+  // ============================================================
+
   @override
   void dispose() {
     _amountController.dispose();

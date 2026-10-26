@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 import '../services/auth_service.dart';
 import '../models/expense_model.dart';
@@ -17,12 +17,11 @@ class _MarketScreenState extends State<MarketScreen> {
   final FinancialService _financialService = FinancialService();
   final AuthService _authService = AuthService();
   bool _isAdmin = false;
-  bool _isLoadingRole = true;
 
-  static const Color primary = Color(0xFF087F8C);
-  static const Color dark = Color(0xFF173B55);
-  static const Color muted = Color(0xFF7186A5);
-  static const Color pageBg = Color(0xFFF3F7FF);
+  static const Color primary = AppColors.primary;
+  static const Color dark = AppColors.textPrimary;
+  static const Color muted = AppColors.textSecondary;
+  static const Color pageBg = AppColors.background;
 
   @override
   void initState() {
@@ -38,16 +37,11 @@ class _MarketScreenState extends State<MarketScreen> {
         if (doc.exists && mounted) {
           setState(() {
             _isAdmin = doc['role'] == 'admin';
-            _isLoadingRole = false;
           });
-        } else {
-           if (mounted) setState(() => _isLoadingRole = false);
         }
       } catch (e) {
-        if (mounted) setState(() => _isLoadingRole = false);
+        // Ignored
       }
-    } else {
-       if (mounted) setState(() => _isLoadingRole = false);
     }
   }
 
@@ -98,7 +92,7 @@ class _MarketScreenState extends State<MarketScreen> {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.03),
+                      color: Colors.black.withValues(alpha: 0.03),
                       blurRadius: 15,
                       offset: const Offset(0, 5),
                     ),
@@ -238,7 +232,7 @@ class _MarketScreenState extends State<MarketScreen> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.04),
+                  color: Colors.black.withValues(alpha: 0.04),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 )

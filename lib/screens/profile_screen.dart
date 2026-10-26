@@ -1,7 +1,7 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../core/constants/app_colors.dart';
 import '../services/auth_service.dart';
 import 'admin_panel_screen.dart';
 
@@ -27,13 +27,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String? _errorMessage;
 
   // Home Screen-এর সঙ্গে মিল রেখে আধুনিক কালার প্যালেট
-  static const Color primary = Color(0xFF087F8C);
-  static const Color primaryDark = Color(0xFF075E68);
-  static const Color accent = Color(0xFF42D6A4);
-  static const Color dark = Color(0xFF173B55);
-  static const Color muted = Color(0xFF7186A5);
-  static const Color pageBg = Color(0xFFF3F7FC);
-  static const Color danger = Color(0xFFE94B64);
+  static const Color primary = AppColors.primary;
+  static const Color primaryDark = AppColors.primaryDark;
+  static const Color accent = AppColors.accent;
+  static const Color dark = AppColors.textPrimary;
+  static const Color muted = AppColors.textSecondary;
+  static const Color pageBg = AppColors.background;
+  static const Color danger = AppColors.danger;
 
   @override
   void initState() {
@@ -312,7 +312,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               color: Colors.white,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   blurRadius: 22,
                   offset: const Offset(0, 8),
                 ),
@@ -379,7 +379,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              color: Colors.white.withOpacity(0.88),
+              color: Colors.white.withValues(alpha: 0.88),
               fontSize: 13,
               fontWeight: FontWeight.w500,
             ),
@@ -394,10 +394,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               vertical: 8,
             ),
             decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.18),
+              color: Colors.white.withValues(alpha: 0.18),
               borderRadius: BorderRadius.circular(30),
               border: Border.all(
-                color: Colors.white.withOpacity(0.45),
+                color: Colors.white.withValues(alpha: 0.45),
               ),
             ),
             child: Row(
@@ -442,7 +442,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           width: 44,
           height: 44,
           decoration: BoxDecoration(
-            color: primary.withOpacity(0.09),
+            color: primary.withValues(alpha: 0.09),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Icon(
@@ -493,7 +493,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF173B55).withOpacity(0.035),
+            color: const Color(0xFF173B55).withValues(alpha: 0.035),
             blurRadius: 18,
             offset: const Offset(0, 6),
           ),
@@ -746,7 +746,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 72,
             height: 72,
             decoration: BoxDecoration(
-              color: primary.withOpacity(0.08),
+              color: primary.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(22),
             ),
             child: const Center(
