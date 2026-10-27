@@ -1,0 +1,61 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Check if logged in
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if the user is an Admin
+    function isAdmin() {
+      return isAuthenticated() &&
+             get(/databases/$(database)/documents/members/$(request.auth.token.email)).data.role == 'admin';
+    }
+
+    // 1. MEMBERS COLLECTION
+    match /members/{email} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.token.email == email;
+      allow update: if isAdmin() || (isAuthenticated() && request.auth.token.email == email);
+      allow delete: if false; // Nobody can delete members
+    }
+
+    // 2. EXPENSES COLLECTION
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated();
+      allow create, update: if isAdmin(); // Only Admin can add/edit expenses
+      allow delete: if false; // Financial records should not be deleted
+    }
+
+    // 3. DEPOSITS COLLECTION
+    match /deposits/{depositId} {
+      allow read: if isAuthenticated();
+      // Any member can create a deposit (request), Admin can update (confirm)
+      allow create: if isAuthenticated();
+      allow update: if isAdmin();
+      allow delete: if false;
+    }
+
+    // 4. MONTHLY MEALS COLLECTION
+    match /monthly_meals/{monthId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin(); // Only Admin can change meal counts
+    }
+
+    // ==============================================================
+    // 5. PERSONAL RECORDS COLLECTION (ব্যক্তিগত আয়-ব্যয় এবং কাজের তালিকা)
+    // ==============================================================
+    match /personal_records/{userEmail}/{document=**} {
+      // শুধুমাত্র সেই ইউজারই তার ডেটা দেখতে এবং পরিবর্তন করতে পারবে, যার ইমেইল দিয়ে ফোল্ডারটি তৈরি হয়েছে।
+      // মেসের Admin বা অন্য কোনো সদস্য এই ডেটা দেখতে পারবে না। 100% Private!
+      allow read, write: if isAuthenticated() && request.auth.token.email == userEmail;
+    }
+
+    // Block everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+  }
+}
