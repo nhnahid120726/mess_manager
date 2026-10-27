@@ -1,7 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/expense_model.dart';
 import '../models/deposit_model.dart'; 
-import '../models/member_model.dart'; // Added this missing import
+import '../models/member_model.dart';
 import 'package:intl/intl.dart';
 
 class FinancialService {
@@ -40,7 +41,7 @@ class FinancialService {
       await docRef.set(expense.toMap());
       return true;
     } catch (e) {
-      print("Error adding expense: $e");
+      debugPrint("Error adding expense: $e");
       return false;
     }
   }
@@ -68,7 +69,7 @@ class FinancialService {
       });
       return true;
     } catch (e) {
-      print("Error updating expense: $e");
+      debugPrint("Error updating expense: $e");
       return false;
     }
   }
@@ -133,7 +134,7 @@ class FinancialService {
       await docRef.set(deposit.toMap());
       return true;
     } catch (e) {
-      print("Error adding deposit: $e");
+      debugPrint("Error adding deposit: $e");
       return false;
     }
   }
@@ -169,7 +170,7 @@ class FinancialService {
         .map((snapshot) {
       
       List<DepositModel> deposits = snapshot.docs
-          .map((doc) => DepositModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .map((doc) => DepositModel.fromMap(doc.data(), doc.id))
           .toList();
       
       deposits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
@@ -186,7 +187,7 @@ class FinancialService {
       });
       return true;
     } catch (e) {
-      print("Error confirming deposit: $e");
+      debugPrint("Error confirming deposit: $e");
       return false;
     }
   }
@@ -200,7 +201,7 @@ class FinancialService {
       });
       return true;
     } catch (e) {
-      print("Error rejecting deposit: $e");
+      debugPrint("Error rejecting deposit: $e");
       return false;
     }
   }
@@ -225,34 +226,42 @@ class FinancialService {
 
     return expensesStream.asyncMap((expenseSnapshot) async {
       QuerySnapshot depositSnapshot = await _firestore.collection('deposits').where('monthId', isEqualTo: currentMonthId).get();
-      QuerySnapshot memberSnap = await _firestore.collection('members').get();
-      DocumentSnapshot mealSnap = await _firestore.collection('monthly_meals').doc(currentMonthId).get();
-
-      Map<String, dynamic> mealCounts = mealSnap.exists ? mealSnap.data() as Map<String, dynamic> : {};
 
       List<ExpenseModel> expenses = expenseSnapshot.docs.map((doc) => ExpenseModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
       List<DepositModel> deposits = depositSnapshot.docs.map((doc) => DepositModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
 
+      String todayDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
       int totalExpensePaisa = 0;
+      int todayExpensePaisa = 0;
       int expensesFromMessFundPaisa = 0;
       int totalConfirmedDepositsPaisa = 0;
       int myTotalDepositsPaisa = 0;
       int myPersonalAdvancesPaisa = 0;
       double myAllocatedSharePaisa = 0.0;
+      double myTodayAllocatedSharePaisa = 0.0;
 
       for (var expense in expenses) {
         totalExpensePaisa += expense.totalAmountInPaisa;
+
+        List<String> shared = expense.sharedBetweenEmails;
+        double expenseSharePaisa = 0.0;
+        if (shared.isEmpty) {
+          expenseSharePaisa = expense.totalAmountInPaisa / 8;
+        } else if (shared.contains(currentUserEmail)) {
+          expenseSharePaisa = expense.totalAmountInPaisa / shared.length;
+        }
+
+        myAllocatedSharePaisa += expenseSharePaisa;
+
+        if (expense.date == todayDate) {
+          todayExpensePaisa += expense.totalAmountInPaisa;
+          myTodayAllocatedSharePaisa += expenseSharePaisa;
+        }
+
         if (expense.paymentSource == 'mess_fund') {
           expensesFromMessFundPaisa += expense.totalAmountInPaisa;
         } else if (expense.paymentSource == 'personal' && expense.paidByEmail == currentUserEmail) {
           myPersonalAdvancesPaisa += expense.totalAmountInPaisa;
-        }
-        
-        List<String> shared = expense.sharedBetweenEmails;
-        if (shared.isEmpty) {
-           myAllocatedSharePaisa += expense.totalAmountInPaisa / 8;
-        } else if (shared.contains(currentUserEmail)) {
-           myAllocatedSharePaisa += expense.totalAmountInPaisa / shared.length;
         }
       }
 
@@ -272,7 +281,9 @@ class FinancialService {
         'totalExpense': totalExpensePaisa / 100,
         'messCashBalance': messCashBalancePaisa / 100,
         'myNetBalance': myNetBalancePaisa / 100,
-        'myAllocatedExpense': myAllocatedSharePaisa / 100, // Replacing 'mealRate'
+        'myAllocatedExpense': myAllocatedSharePaisa / 100,
+        'todayExpense': todayExpensePaisa / 100,
+        'myTodayAllocatedExpense': myTodayAllocatedSharePaisa / 100,
       };
     });
   }
@@ -289,24 +300,9 @@ class FinancialService {
 
       QuerySnapshot expenseSnapshot = await _firestore.collection('expenses').where('monthId', isEqualTo: currentMonthId).get();
       QuerySnapshot depositSnapshot = await _firestore.collection('deposits').where('monthId', isEqualTo: currentMonthId).get();
-      DocumentSnapshot mealSnap = await _firestore.collection('monthly_meals').doc(currentMonthId).get();
-      Map<String, dynamic> mealCounts = mealSnap.exists ? mealSnap.data() as Map<String, dynamic> : {};
 
       List<ExpenseModel> expenses = expenseSnapshot.docs.map((doc) => ExpenseModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
       List<DepositModel> deposits = depositSnapshot.docs.map((doc) => DepositModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
-
-      int totalExpensePaisa = 0;
-      for (var expense in expenses) {
-        totalExpensePaisa += expense.totalAmountInPaisa;
-      }
-
-      int totalMeals = 0;
-      for (var member in allMembers) {
-        int m = mealCounts.containsKey(member.email) ? (mealCounts[member.email] as num).toInt() : 30;
-        totalMeals += m;
-      }
-
-      double mealRatePaisa = totalMeals > 0 ? (totalExpensePaisa / totalMeals) : 0.0;
 
       List<Map<String, dynamic>> memberBalances = [];
 
@@ -347,7 +343,7 @@ class FinancialService {
       memberBalances.sort((a, b) => a['name'].compareTo(b['name']));
       return memberBalances;
     } catch (e) {
-      print("Error calculating all balances: $e");
+      debugPrint("Error calculating all balances: $e");
       return [];
     }
   }

@@ -23,7 +23,7 @@ class MessApp extends StatelessWidget {
       title: 'Mess Management App',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal),
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E3A8A)),
         fontFamily: 'NotoSansBengali',
         useMaterial3: true,
       ),
@@ -49,7 +49,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.teal)));
+          return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF1E3A8A))));
         }
         
         // If user is NOT logged in

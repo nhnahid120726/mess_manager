@@ -9,7 +9,7 @@ class MembersScreen extends StatefulWidget {
   State<MembersScreen> createState() => _MembersScreenState();
 }
 
-class _MembersScreenState extends State<MembersScreen> {
+class _MembersScreenState extends State<MembersScreen> with AutomaticKeepAliveClientMixin<MembersScreen> {
   final FinancialService _financialService = FinancialService();
 
   static const Color primary = AppColors.primary;
@@ -18,7 +18,11 @@ class _MembersScreenState extends State<MembersScreen> {
   static const Color pageBg = AppColors.background;
 
   @override
+  bool get wantKeepAlive => true;
+
+  @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: pageBg,
       appBar: AppBar(
@@ -31,7 +35,7 @@ class _MembersScreenState extends State<MembersScreen> {
       body: FutureBuilder<List<Map<String, dynamic>>>(
         future: _financialService.getAllMembersBalances(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator(color: primary));
           }
 
@@ -84,9 +88,15 @@ class _MembersScreenState extends State<MembersScreen> {
               
               // Member List
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: members.length,
+                child: RefreshIndicator(
+                  color: primary,
+                  onRefresh: () async {
+                    setState(() {});
+                  },
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                    itemCount: members.length,
                   itemBuilder: (context, index) {
                     final member = members[index];
                     final double balance = member['netBalance'];
@@ -175,7 +185,7 @@ class _MembersScreenState extends State<MembersScreen> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  isPositive ? '+ ৳ ${balance.toStringAsFixed(0)}' : '- ৳ ${balance.abs().toStringAsFixed(0)}',
+                                  isPositive ? '+ ৳ ${balance.toStringAsFixed(2)}' : '- ৳ ${balance.abs().toStringAsFixed(2)}',
                                   style: TextStyle(
                                     fontWeight: FontWeight.w900, 
                                     fontSize: 18, 
@@ -208,6 +218,7 @@ class _MembersScreenState extends State<MembersScreen> {
                   },
                 ),
               ),
+            ),
             ],
           );
         },

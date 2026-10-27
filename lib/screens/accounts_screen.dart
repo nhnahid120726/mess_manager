@@ -15,11 +15,14 @@ class AccountsScreen extends StatefulWidget {
   State<AccountsScreen> createState() => _AccountsScreenState();
 }
 
-class _AccountsScreenState extends State<AccountsScreen> {
+class _AccountsScreenState extends State<AccountsScreen> with AutomaticKeepAliveClientMixin<AccountsScreen> {
   final FinancialService _financialService = FinancialService();
   final AuthService _authService = AuthService();
 
   bool _isAdmin = false;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -50,6 +53,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: AppColors.background,
 
@@ -58,7 +62,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
       body: StreamBuilder<List<DepositModel>>(
         stream: _financialService.getMonthlyDeposits(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return _buildLoadingState();
           }
 
@@ -78,18 +82,24 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   ? 32
                   : 16;
 
-              return ListView.builder(
-                physics: const BouncingScrollPhysics(),
-                padding: EdgeInsets.fromLTRB(
-                  horizontalPadding,
-                  18,
-                  horizontalPadding,
-                  120,
-                ),
-                itemCount: deposits.length,
-                itemBuilder: (context, index) {
-                  return _buildDepositCard(context, deposits[index]);
+              return RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  setState(() {});
                 },
+                child: ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    18,
+                    horizontalPadding,
+                    120,
+                  ),
+                  itemCount: deposits.length,
+                  itemBuilder: (context, index) {
+                    return _buildDepositCard(context, deposits[index]);
+                  },
+                ),
               );
             },
           );
@@ -269,7 +279,7 @@ class _AccountsScreenState extends State<AccountsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '৳ ${deposit.amountInTaka.toStringAsFixed(0)}',
+                      '৳ ${deposit.amountInTaka.toStringAsFixed(2)}',
 
                       style: const TextStyle(
                         color: AppColors.primary,

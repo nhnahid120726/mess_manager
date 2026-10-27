@@ -7,6 +7,10 @@ import 'market_screen.dart';
 import 'accounts_screen.dart';
 import 'members_screen.dart';
 import 'profile_screen.dart';
+import 'personal/personal_dashboard_screen.dart';
+import 'personal/personal_transactions_screen.dart';
+import 'personal/add_personal_transaction_screen.dart';
+import 'personal/personal_accounts_screen.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
@@ -16,16 +20,72 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  int _currentIndex = 0;
+  int _messIndex = 0;
+  int _personalIndex = 0;
+  bool _isPersonalModule = false; // Default to Mess Manager
 
-  // List of screens for the bottom navigation bar
-  final List<Widget> _screens = [
-    const HomeScreen(),
+  late final PageController _messPageController = PageController(initialPage: _messIndex);
+  late final PageController _personalPageController = PageController(initialPage: _personalIndex);
+
+  @override
+  void dispose() {
+    _messPageController.dispose();
+    _personalPageController.dispose();
+    super.dispose();
+  }
+
+  void _toggleModule() {
+    setState(() {
+      _isPersonalModule = !_isPersonalModule;
+    });
+  }
+
+  late final List<Widget> _messScreens = [
+    HomeScreen(onToggleModule: _toggleModule),
     const MarketScreen(),
     const AccountsScreen(),
     const MembersScreen(),
     const ProfileScreen(),
   ];
+
+  late final List<Widget> _personalScreens = [
+    PersonalDashboardScreen(onToggleModule: _toggleModule),
+    const PersonalTransactionsScreen(),
+    const AddPersonalTransactionScreen(),
+    const PersonalAccountsScreen(),
+    const ProfileScreen(),
+  ];
+
+  int get _currentIndex => _isPersonalModule ? _personalIndex : _messIndex;
+  PageController get _activeController => _isPersonalModule ? _personalPageController : _messPageController;
+
+  void _onTabSelected(int index) {
+    if (_currentIndex == index) return;
+
+    setState(() {
+      if (_isPersonalModule) {
+        _personalIndex = index;
+      } else {
+        _messIndex = index;
+      }
+    });
+
+    _activeController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
+  void _onPageChanged(int index) {
+    setState(() {
+      if (_isPersonalModule) {
+        _personalIndex = index;
+      } else {
+        _messIndex = index;
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,88 +93,22 @@ class _MainLayoutState extends State<MainLayout> {
 
     return PopScope(
       canPop: false,
-      // Android-এর ডিফল্ট ব্যাক বাটন সরাসরি অ্যাপ বন্ধ করা ঠেকাবে
-      onPopInvokedWithResult: (bool didPop, Object? result) async {
+      onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
 
         if (_currentIndex != 0) {
-          // ১. যদি অন্য ট্যাবে থাকি, তাহলে ব্যাক বাটন চাপলে Home ট্যাবে ফিরে আসবে
-          setState(() {
-            _currentIndex = 0;
-          });
+          _onTabSelected(0);
         } else {
-          // ২. যদি Home ট্যাবেই থাকি, তাহলে Exit Confirmation ডায়ালগ দেখাবে
-          final bool? shouldExit = await showDialog<bool>(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                title: const Row(
-                  children: [
-                    Icon(Icons.exit_to_app_rounded, color: Color(0xFFFF4058)),
-                    SizedBox(width: 10),
-                    Text(
-                      'অ্যাপ বন্ধ করবেন?',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w900,
-                        fontSize: 20,
-                      ),
-                    ),
-                  ],
-                ),
-                content: const Text(
-                  'আপনি কি মেস ম্যানেজার অ্যাপ থেকে বের হতে চান?',
-                  style: TextStyle(fontSize: 15, color: Color(0xFF7186A5)),
-                ),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(context).pop(false),
-                    // ডায়ালগ বন্ধ করবে
-                    child: const Text(
-                      'না',
-                      style: TextStyle(
-                        color: Color(0xFF7186A5),
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(true),
-                    // অ্যাপ বন্ধের সিগন্যাল দেবে
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFF4058),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                    ),
-                    child: const Text(
-                      'হ্যাঁ',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-
-          // ৩. যদি ইউজার 'হ্যাঁ' সিলেক্ট করে, তবে SystemNavigator ব্যবহার করে অ্যাপ বন্ধ হবে
-          if (shouldExit == true) {
-            SystemNavigator.pop();
-          }
+          _showExitDialog(context);
         }
       },
       child: Scaffold(
-        extendBody: true, 
-        // 🚀 OPTIMIZATION: IndexedStack ব্যবহার করা হয়েছে। 
-        // এর ফলে পেজ পরিবর্তন করার সময় বারবার ফায়ারবেস থেকে ডেটা লোড হবে না।
-        // একবার লোড হওয়া পেজগুলো মেমরিতে ক্যাশ (Cache) হয়ে থাকবে, ফলে পেজ সুইচিং হবে চোখের পলকে!
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
+        extendBody: true,
+        body: PageView(
+          controller: _activeController,
+          onPageChanged: _onPageChanged,
+          physics: const BouncingScrollPhysics(),
+          children: _isPersonalModule ? _personalScreens : _messScreens,
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
@@ -160,73 +154,128 @@ class _MainLayoutState extends State<MainLayout> {
                 height: 75,
                 elevation: 0,
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-                onDestinationSelected: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-                destinations: [
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.dashboard_outlined,
-                      color: Color(0xFF969BB2),
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.dashboard_rounded,
-                      color: primary,
-                    ),
-                    label: 'ড্যাশবোর্ড',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.shopping_cart_outlined,
-                      color: Color(0xFF969BB2),
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.shopping_cart_rounded,
-                      color: primary,
-                    ),
-                    label: 'বাজার',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.account_balance_wallet_outlined,
-                      color: Color(0xFF969BB2),
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.account_balance_wallet_rounded,
-                      color: primary,
-                    ),
-                    label: 'জমা',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.people_outline_rounded,
-                      color: Color(0xFF969BB2),
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.people_rounded,
-                      color: primary,
-                    ),
-                    label: 'সদস্য',
-                  ),
-                  NavigationDestination(
-                    icon: const Icon(
-                      Icons.person_outline_rounded,
-                      color: Color(0xFF969BB2),
-                    ),
-                    selectedIcon: const Icon(
-                      Icons.person_rounded,
-                      color: primary,
-                    ),
-                    label: 'প্রোফাইল',
-                  ),
-                ],
+                onDestinationSelected: _onTabSelected,
+                destinations: _isPersonalModule
+                    ? const [
+                        NavigationDestination(
+                          icon: Icon(Icons.dashboard_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.dashboard_rounded, color: primary),
+                          label: 'হোম',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.receipt_long_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.receipt_long_rounded, color: primary),
+                          label: 'লেনদেন',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.add_circle_outline_rounded, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.add_circle_rounded, color: primary),
+                          label: 'যোগ করুন',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: primary),
+                          label: 'ওয়ালেট',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.person_outline_rounded, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.person_rounded, color: primary),
+                          label: 'প্রোফাইল',
+                        ),
+                      ]
+                    : const [
+                        NavigationDestination(
+                          icon: Icon(Icons.dashboard_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.dashboard_rounded, color: primary),
+                          label: 'ড্যাশবোর্ড',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.shopping_cart_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.shopping_cart_rounded, color: primary),
+                          label: 'বাজার',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: primary),
+                          label: 'জমা',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.people_outline_rounded, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.people_rounded, color: primary),
+                          label: 'সদস্য',
+                        ),
+                        NavigationDestination(
+                          icon: Icon(Icons.person_outline_rounded, color: Color(0xFF969BB2)),
+                          selectedIcon: Icon(Icons.person_rounded, color: primary),
+                          label: 'প্রোফাইল',
+                        ),
+                      ],
               ),
             ),
           ),
         ),
-      ), // Close Scaffold
-    ); // Close PopScope
+      ),
+    );
+  }
+
+  void _showExitDialog(BuildContext context) async {
+    final bool? shouldExit = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.exit_to_app_rounded, color: Color(0xFFFF4058)),
+              SizedBox(width: 10),
+              Text(
+                'অ্যাপ বন্ধ করবেন?',
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 20,
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'আপনি কি মেস ম্যানেজার অ্যাপ থেকে বের হতে চান?',
+            style: TextStyle(fontSize: 15, color: Color(0xFF7186A5)),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text(
+                'না',
+                style: TextStyle(
+                  color: Color(0xFF7186A5),
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFFF4058),
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: const Text(
+                'হ্যাঁ',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldExit == true) {
+      SystemNavigator.pop();
+    }
   }
 }

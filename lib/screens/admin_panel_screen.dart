@@ -5,7 +5,6 @@ import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 import '../services/auth_service.dart';
 import '../models/deposit_model.dart';
-import 'manage_meals_screen.dart';
 
 class AdminPanelScreen extends StatefulWidget {
   const AdminPanelScreen({super.key});
@@ -19,7 +18,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
   final AuthService _authService = AuthService();
 
   static const Color _primary = AppColors.primary;
-  static const Color _primaryDark = AppColors.primaryDark;
   static const Color _dark = AppColors.textPrimary;
   static const Color _muted = AppColors.textSecondary;
   static const Color _pageBg = AppColors.background;
@@ -86,10 +84,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: _buildManageMealsCard(context),
-              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
                 child: Row(
@@ -167,99 +161,6 @@ class _AdminPanelScreenState extends State<AdminPanelScreen> {
             ],
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildManageMealsCard(BuildContext context) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const ManageMealsScreen(),
-            ),
-          );
-        },
-        borderRadius: BorderRadius.circular(22),
-        child: Ink(
-          width: double.infinity,
-          padding: const EdgeInsets.all(20),
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              colors: [_primary, _primaryDark],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(22),
-            boxShadow: [
-              BoxShadow(
-                color: _primary.withValues(alpha: 0.20),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 52,
-                height: 52,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.16),
-                  borderRadius: BorderRadius.circular(17),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-                ),
-                child: const Icon(
-                  Icons.restaurant_menu_rounded,
-                  color: Colors.white,
-                  size: 27,
-                ),
-              ),
-              const SizedBox(width: 14),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'সদস্যদের মিল হিসাব',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Text(
-                      'মিল পরিচালনা ও হিসাব দেখতে ট্যাপ করুন',
-                      style: TextStyle(
-                        color: Colors.white70,
-                        fontSize: 11.5,
-                        height: 1.4,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                width: 34,
-                height: 34,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.arrow_forward_rounded,
-                  color: Colors.white,
-                  size: 19,
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }

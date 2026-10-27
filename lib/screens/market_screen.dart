@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 import '../services/auth_service.dart';
 import '../models/expense_model.dart';
 import 'add_expense_screen.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -13,7 +15,7 @@ class MarketScreen extends StatefulWidget {
   State<MarketScreen> createState() => _MarketScreenState();
 }
 
-class _MarketScreenState extends State<MarketScreen> {
+class _MarketScreenState extends State<MarketScreen> with AutomaticKeepAliveClientMixin<MarketScreen> {
   final FinancialService _financialService = FinancialService();
   final AuthService _authService = AuthService();
   bool _isAdmin = false;
@@ -22,6 +24,9 @@ class _MarketScreenState extends State<MarketScreen> {
   static const Color dark = AppColors.textPrimary;
   static const Color muted = AppColors.textSecondary;
   static const Color pageBg = AppColors.background;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -47,6 +52,7 @@ class _MarketScreenState extends State<MarketScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     return Scaffold(
       backgroundColor: pageBg,
       appBar: AppBar(
@@ -59,7 +65,7 @@ class _MarketScreenState extends State<MarketScreen> {
       body: StreamBuilder<List<ExpenseModel>>(
         stream: _financialService.getMonthlyExpenses(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(child: CircularProgressIndicator(color: primary));
           }
           
@@ -78,9 +84,15 @@ class _MarketScreenState extends State<MarketScreen> {
 
           final expenses = snapshot.data!;
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // extra padding for bottom nav
-            itemCount: expenses.length,
+          return RefreshIndicator(
+            color: primary,
+            onRefresh: () async {
+              setState(() {});
+            },
+            child: ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+              itemCount: expenses.length,
             itemBuilder: (context, index) {
               final expense = expenses[index];
               final bool isMessFund = expense.paymentSource == 'mess_fund';
@@ -166,7 +178,7 @@ class _MarketScreenState extends State<MarketScreen> {
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
                           Text(
-                            '৳ ${expense.totalAmountInTaka.toStringAsFixed(0)}',
+                            '৳ ${expense.totalAmountInTaka.toStringAsFixed(2)}',
                             style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: dark),
                           ),
                           const SizedBox(height: 4),
@@ -193,7 +205,8 @@ class _MarketScreenState extends State<MarketScreen> {
               ),
               );
             },
-          );
+          ),
+        );
         },
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,

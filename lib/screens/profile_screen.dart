@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants/app_colors.dart';
 import '../services/auth_service.dart';
 import 'admin_panel_screen.dart';
+import 'personal/personal_reports_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -197,6 +198,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             iconBg: const Color(0xFFF3E8FF),
                             title: 'গুগল আইডি',
                             subtitle: providerUid,
+                          ),
+                          _buildDivider(),
+                          ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            leading: Container(
+                              width: 44,
+                              height: 44,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: const Icon(Icons.analytics_rounded, color: AppColors.primary, size: 23),
+                            ),
+                            title: const Text('Personal Reports & Export CSV', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textPrimary)),
+                            subtitle: const Text('View financial trends & download CSV report', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                            trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 16, color: AppColors.textSecondary),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(builder: (context) => const PersonalReportsScreen()),
+                              );
+                            },
                           ),
                         ],
                       ),

@@ -3,18 +3,21 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants/app_colors.dart';
 import '../services/auth_service.dart';
 import '../services/financial_service.dart';
+import 'market_screen.dart';
 
 // ==========================================
 // 📱 Main Screen
 // ==========================================
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  final VoidCallback? onToggleModule;
+
+  const HomeScreen({super.key, this.onToggleModule});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen> with AutomaticKeepAliveClientMixin<HomeScreen> {
   final AuthService _authService = AuthService();
   final FinancialService _financialService = FinancialService();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -24,6 +27,9 @@ class _HomeScreenState extends State<HomeScreen> {
   String _userEmail = '';
   String? _photoUrl;
   bool _isLoading = true;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -55,6 +61,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: AppColors.background,
@@ -66,8 +73,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       backgroundColor: AppColors.background,
-      body: SingleChildScrollView(
-        child: Column(
+      body: RefreshIndicator(
+        color: AppColors.accent,
+        onRefresh: () async {
+          await _fetchUserData();
+          setState(() {});
+        },
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ১. Header Section (Clean Widget)
@@ -76,6 +90,7 @@ class _HomeScreenState extends State<HomeScreen> {
               userRole: _userRole,
               photoUrl: _photoUrl,
               onLogout: () async => await _authService.signOut(),
+              onToggleModule: widget.onToggleModule,
             ),
 
             // ২. Financial Dashboard Section
@@ -100,7 +115,14 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                   TextButton(
-                    onPressed: () {}, // TODO: Navigate to all transactions
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const MarketScreen(),
+                        ),
+                      );
+                    },
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.accent,
                     ),
@@ -117,11 +139,12 @@ class _HomeScreenState extends State<HomeScreen> {
             if (_userEmail.isNotEmpty)
               _RecentTransactions(firestore: _firestore),
 
-            const SizedBox(height: 30), // Bottom padding
+            const SizedBox(height: 30), // Bottom padding for navigation bar
           ],
         ),
       ),
-    );
+    ),
+  );
   }
 }
 
@@ -135,19 +158,21 @@ class _HeaderSection extends StatelessWidget {
   final String userRole;
   final String? photoUrl;
   final VoidCallback onLogout;
+  final VoidCallback? onToggleModule;
 
   const _HeaderSection({
     required this.userName,
     required this.userRole,
     this.photoUrl,
     required this.onLogout,
+    this.onToggleModule,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 60, 20, 60),
+      padding: const EdgeInsets.fromLTRB(20, 42, 20, 32),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [AppColors.primaryDark, AppColors.primary],
@@ -155,8 +180,8 @@ class _HeaderSection extends StatelessWidget {
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(40),
-          bottomRight: Radius.circular(40),
+          bottomLeft: Radius.circular(28),
+          bottomRight: Radius.circular(28),
         ),
       ),
       child: Column(
@@ -167,31 +192,31 @@ class _HeaderSection extends StatelessWidget {
               Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(12),
                     ),
                     child: const Icon(Icons.maps_home_work_rounded,
-                        color: Colors.white, size: 28),
+                        color: Colors.white, size: 22),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   const Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         'Mess Manager',
                         style: TextStyle(
-                          fontSize: 22,
+                          fontSize: 18,
                           fontWeight: FontWeight.w900,
                           color: Colors.white,
-                          letterSpacing: 0.5,
+                          letterSpacing: 0.3,
                         ),
                       ),
                       Text(
                         'একসাথে • সুন্দর • জীবন',
                         style: TextStyle(
-                          fontSize: 13,
+                          fontSize: 11,
                           color: Colors.white70,
                           fontWeight: FontWeight.w500,
                         ),
@@ -200,54 +225,77 @@ class _HeaderSection extends StatelessWidget {
                   ),
                 ],
               ),
-              IconButton(
-                onPressed: onLogout,
-                icon: const Icon(Icons.power_settings_new_rounded,
-                    color: Colors.white70, size: 28),
-                tooltip: 'লগআউট',
+              InkWell(
+                onTap: onToggleModule,
+                borderRadius: BorderRadius.circular(16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.person_rounded, color: Colors.white, size: 16),
+                      SizedBox(width: 5),
+                      Text(
+                        'ব্যক্তিগত ওয়ালেট',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ],
           ),
-          const SizedBox(height: 35),
+          const SizedBox(height: 14),
           Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(3),
+                padding: const EdgeInsets.all(2),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.3),
                   shape: BoxShape.circle,
                 ),
                 child: CircleAvatar(
-                  radius: 30,
+                  radius: 22,
                   backgroundColor: AppColors.background,
                   backgroundImage:
                   photoUrl != null ? NetworkImage(photoUrl!) : null,
                   child: photoUrl == null
                       ? const Icon(Icons.person_rounded,
-                      size: 35, color: AppColors.primary)
+                      size: 26, color: AppColors.primary)
                       : null,
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
                       'স্বাগতম, $userName',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontSize: 20,
+                        fontSize: 16,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 5),
+                          horizontal: 10, vertical: 3),
                       decoration: BoxDecoration(
                         color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(14),
                         border: Border.all(
                             color: Colors.white.withValues(alpha: 0.2)),
                       ),
@@ -255,9 +303,9 @@ class _HeaderSection extends StatelessWidget {
                         userRole.toUpperCase(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w700,
-                          letterSpacing: 1.2,
+                          letterSpacing: 1.0,
                         ),
                       ),
                     ),
@@ -287,7 +335,7 @@ class _FinancialDashboard extends StatelessWidget {
     return StreamBuilder<Map<String, dynamic>>(
       stream: financialService.getFinancialSummary(userEmail),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
           return const SizedBox(
             height: 200,
             child: Center(
@@ -300,13 +348,14 @@ class _FinancialDashboard extends StatelessWidget {
         final totalExpense = data['totalExpense'] ?? 0.0;
         final messCashBalance = data['messCashBalance'] ?? 0.0;
         final myNetBalance = data['myNetBalance'] ?? 0.0;
-        final myMeals = data['myMeals'] ?? 0;
+        final todayExpense = data['todayExpense'] ?? 0.0;
+        final myTodayAllocatedExpense = data['myTodayAllocatedExpense'] ?? 0.0;
         final myAllocatedExpense = data['myAllocatedExpense'] ?? 0.0;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20),
           child: Transform.translate(
-            offset: const Offset(0, -35), // Overlapping Effect
+            offset: const Offset(0, -20), // Overlapping Effect
             child: Column(
               children: [
                 Row(
@@ -340,7 +389,8 @@ class _FinancialDashboard extends StatelessWidget {
                 _ExpenseCard(
                   totalExpense: totalExpense,
                   myAllocatedExpense: myAllocatedExpense,
-                  myMeals: myMeals,
+                  todayExpense: todayExpense,
+                  myTodayAllocatedExpense: myTodayAllocatedExpense,
                 ),
               ],
             ),
@@ -423,12 +473,14 @@ class _BalanceCard extends StatelessWidget {
 class _ExpenseCard extends StatelessWidget {
   final double totalExpense;
   final double myAllocatedExpense;
-  final int myMeals;
+  final double todayExpense;
+  final double myTodayAllocatedExpense;
 
   const _ExpenseCard({
     required this.totalExpense,
     required this.myAllocatedExpense,
-    required this.myMeals,
+    required this.todayExpense,
+    required this.myTodayAllocatedExpense,
   });
 
   @override
@@ -487,12 +539,12 @@ class _ExpenseCard extends StatelessWidget {
           ),
           const SizedBox(height: 26),
 
-          // Stats Row with Glassmorphism Effect
+          // Stats Row with 3 Columns
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(22),
+              borderRadius: BorderRadius.circular(20),
               border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
             ),
             child: Row(
@@ -500,22 +552,37 @@ class _ExpenseCard extends StatelessWidget {
                 Expanded(
                   child: _MiniStat(
                     icon: Icons.pie_chart_rounded,
-                    title: 'আমার ভাগে',
-                    value: '৳ ${myAllocatedExpense.toStringAsFixed(0)}',
+                    title: 'মোট ভাগ',
+                    value: '৳ ${myAllocatedExpense.toStringAsFixed(2)}',
                   ),
                 ),
                 Container(
                   width: 1,
-                  height: 45,
+                  height: 38,
                   color: Colors.white.withValues(alpha: 0.2),
                 ),
                 Expanded(
                   child: Padding(
-                    padding: const EdgeInsets.only(left: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 8),
                     child: _MiniStat(
-                      icon: Icons.restaurant_rounded,
-                      title: 'আমার মিল',
-                      value: '$myMeals টি',
+                      icon: Icons.shopping_bag_rounded,
+                      title: 'আজকের বাজার',
+                      value: '৳ ${todayExpense.toStringAsFixed(2)}',
+                    ),
+                  ),
+                ),
+                Container(
+                  width: 1,
+                  height: 38,
+                  color: Colors.white.withValues(alpha: 0.2),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: _MiniStat(
+                      icon: Icons.today_rounded,
+                      title: 'আজকের ভাগ',
+                      value: '৳ ${myTodayAllocatedExpense.toStringAsFixed(2)}',
                     ),
                   ),
                 ),
@@ -547,25 +614,32 @@ class _MiniStat extends StatelessWidget {
       children: [
         Row(
           children: [
-            Icon(icon, color: Colors.white70, size: 16),
-            const SizedBox(width: 6),
-            Text(
-              title,
-              style: const TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+            Icon(icon, color: Colors.white70, size: 13),
+            const SizedBox(width: 4),
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: Colors.white70,
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
+        const SizedBox(height: 5),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         ),
       ],
@@ -590,7 +664,7 @@ class _RecentTransactions extends StatelessWidget {
             .limit(3)
             .snapshots(),
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (snapshot.connectionState == ConnectionState.waiting && !snapshot.hasData) {
             return const Center(
               child: Padding(
                 padding: EdgeInsets.all(20),
@@ -707,7 +781,7 @@ class _RecentTransactions extends StatelessWidget {
                     ),
                   ),
                   trailing: Text(
-                    '- ৳${amount.toStringAsFixed(0)}',
+                    '- ৳${amount.toStringAsFixed(2)}',
                     style: const TextStyle(
                       color: AppColors.danger,
                       fontWeight: FontWeight.w900,

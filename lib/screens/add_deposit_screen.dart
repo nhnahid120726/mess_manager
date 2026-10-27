@@ -5,6 +5,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../core/constants/app_colors.dart';
 import '../services/financial_service.dart';
 import '../services/auth_service.dart';
+import '../services/personal_finance_service.dart';
+import '../models/personal_transaction_model.dart';
 
 class AddDepositScreen extends StatefulWidget {
   final bool isAdmin;
@@ -473,12 +475,45 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
       });
 
       if (success) {
+        // Automatically deduct from Personal Wallet
+        try {
+          final personalFinanceService = PersonalFinanceService();
+          final accounts = await personalFinanceService.getAccounts().first;
+          if (accounts.isNotEmpty) {
+            final targetAccount = accounts.firstWhere(
+              (acc) => acc.type.toLowerCase().contains(_paymentMethod.toLowerCase()) || acc.name.toLowerCase().contains(_paymentMethod.toLowerCase()),
+              orElse: () => accounts.first,
+            );
+
+            final tx = PersonalTransactionModel(
+              id: '',
+              uid: _authService.currentUser?.uid ?? '',
+              type: 'expense',
+              amountPaisa: (amount * 100).round(),
+              sourceAccountId: targetAccount.id,
+              categoryId: 'cat_rent',
+              categoryName: 'বাসা ভাড়া / মেস ভাড়া',
+              description: 'মেসে জমা প্রদান ($_paymentMethod)',
+              notes: 'Mess Deposit',
+              transactionDate: DateTime.now(),
+              createdAt: DateTime.now(),
+              updatedAt: DateTime.now(),
+            );
+
+            await personalFinanceService.addTransaction(tx);
+          }
+        } catch (_) {
+          // Ignored
+        }
+
+        if (!mounted) return;
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.isAdmin
-                  ? 'ডিপোজিট সফলভাবে যোগ হয়েছে!'
-                  : 'ডিপোজিটের অনুরোধ অ্যাডমিনের কাছে পাঠানো হয়েছে!',
+                  ? 'ডিপোজিট সফলভাবে জমা হয়েছে এবং আপনার পার্সোনাল ওয়ালেট থেকে টাকা কেটে নেওয়া হয়েছে!'
+                  : 'ডিপোজিটের অনুরোধ পাঠানো হয়েছে এবং আপনার পার্সোনাল ওয়ালেট থেকে টাকা সমন্বয় করা হয়েছে!',
             ),
             backgroundColor: primary,
             behavior: SnackBarBehavior.floating,
