@@ -75,8 +75,13 @@ class _AddExpenseScreenState extends State<AddExpenseScreen> {
 
       if (!mounted) return;
 
-      final emails =
-      snapshot.docs.map((doc) => doc.id).toList();
+      // Filter out wallet_only users so ONLY the 8 mess members are shown when adding expenses!
+      final messMemberDocs = snapshot.docs.where((doc) {
+        final data = doc.data();
+        return data['role'] != 'wallet_only';
+      }).toList();
+
+      final emails = messMemberDocs.map((doc) => doc.id).toList();
 
       setState(() {
         _memberEmails = emails;

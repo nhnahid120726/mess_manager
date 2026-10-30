@@ -429,13 +429,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 Icon(
                   _userRole == 'admin'
                       ? Icons.admin_panel_settings_rounded
-                      : Icons.verified_user_rounded,
+                      : (_userRole == 'wallet_only'
+                          ? Icons.account_balance_wallet_rounded
+                          : Icons.verified_user_rounded),
                   size: 17,
                   color: Colors.white,
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  _userRole.toUpperCase(),
+                  _userRole == 'wallet_only'
+                      ? 'WALLET USER'
+                      : _userRole.toUpperCase(),
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 11,

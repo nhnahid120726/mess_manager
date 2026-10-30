@@ -296,6 +296,7 @@ class FinancialService {
       QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
       List<MemberModel> allMembers = membersSnapshot.docs
           .map((doc) => MemberModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+          .where((member) => member.role != 'wallet_only')
           .toList();
 
       QuerySnapshot expenseSnapshot = await _firestore.collection('expenses').where('monthId', isEqualTo: currentMonthId).get();

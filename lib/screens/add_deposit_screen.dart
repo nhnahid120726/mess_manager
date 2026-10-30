@@ -66,8 +66,13 @@ class _AddDepositScreenState extends State<AddDepositScreen> {
 
       if (!mounted) return;
 
+      final messMemberDocs = snapshot.docs.where((doc) {
+        final data = doc.data() as Map<String, dynamic>;
+        return data['role'] != 'wallet_only';
+      }).toList();
+
       setState(() {
-        _memberEmails = snapshot.docs.map((doc) => doc.id).toList();
+        _memberEmails = messMemberDocs.map((doc) => doc.id).toList();
 
         if (_memberEmails.isNotEmpty) {
           final currentEmail = _authService.currentUser?.email;

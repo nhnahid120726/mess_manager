@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/constants/app_colors.dart';
+import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'market_screen.dart';
 import 'accounts_screen.dart';
@@ -20,12 +21,35 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
+  final AuthService _authService = AuthService();
+
   int _messIndex = 0;
   int _personalIndex = 0;
-  bool _isPersonalModule = false; // Default to Mess Manager
+  bool _isPersonalModule = false; // Default to Mess Manager for mess members
+  bool _isWalletOnlyUser = false;
+  bool _isLoadingRole = true;
 
   late final PageController _messPageController = PageController(initialPage: _messIndex);
   late final PageController _personalPageController = PageController(initialPage: _personalIndex);
+
+  @override
+  void initState() {
+    super.initState();
+    _checkUserRole();
+  }
+
+  Future<void> _checkUserRole() async {
+    final String role = await _authService.getCurrentUserRole();
+    if (mounted) {
+      setState(() {
+        if (role == 'wallet_only') {
+          _isWalletOnlyUser = true;
+          _isPersonalModule = true; // Force Personal Wallet for 9th+ user
+        }
+        _isLoadingRole = false;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -35,21 +59,22 @@ class _MainLayoutState extends State<MainLayout> {
   }
 
   void _toggleModule() {
+    if (_isWalletOnlyUser) return; // Wallet-only users cannot switch to Mess Manager
     setState(() {
       _isPersonalModule = !_isPersonalModule;
     });
   }
 
-  late final List<Widget> _messScreens = [
-    HomeScreen(onToggleModule: _toggleModule),
+  List<Widget> get _messScreens => [
+    HomeScreen(onToggleModule: _isWalletOnlyUser ? null : _toggleModule),
     const MarketScreen(),
     const AccountsScreen(),
     const MembersScreen(),
     const ProfileScreen(),
   ];
 
-  late final List<Widget> _personalScreens = [
-    PersonalDashboardScreen(onToggleModule: _toggleModule),
+  List<Widget> get _personalScreens => [
+    PersonalDashboardScreen(onToggleModule: _isWalletOnlyUser ? null : _toggleModule),
     const PersonalTransactionsScreen(),
     const AddPersonalTransactionScreen(),
     const PersonalAccountsScreen(),
@@ -90,6 +115,15 @@ class _MainLayoutState extends State<MainLayout> {
   @override
   Widget build(BuildContext context) {
     const Color primary = AppColors.primary;
+
+    if (_isLoadingRole) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+      );
+    }
 
     return PopScope(
       canPop: false,
@@ -240,7 +274,7 @@ class _MainLayoutState extends State<MainLayout> {
             ],
           ),
           content: const Text(
-            'আপনি কি মেস ম্যানেজার অ্যাপ থেকে বের হতে চান?',
+            'আপনি কি অ্যাপ থেকে বের হতে চান?',
             style: TextStyle(fontSize: 15, color: Color(0xFF7186A5)),
           ),
           actions: [

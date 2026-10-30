@@ -41,32 +41,50 @@ class AuthService {
       DocumentSnapshot doc = await _firestore.collection('members').doc(user.email).get();
 
       if (doc.exists) {
-        // User exists in our database, check if authorized
-        bool isAuthorized = doc['isAuthorized'] ?? false;
+        bool isAuthorized = doc['isAuthorized'] ?? true;
         
         if (!isAuthorized) {
-           QuerySnapshot membersCount = await _firestore.collection('members').get();
-           if (membersCount.docs.length <= 8) {
-               await _firestore.collection('members').doc(user.email).update({'isAuthorized': true});
-               return true;
+           QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
+           int messMembersCount = membersSnapshot.docs
+               .where((d) => (d.data() as Map<String, dynamic>?)?['role'] != 'wallet_only')
+               .length;
+           
+           if (messMembersCount < 8) {
+               await _firestore.collection('members').doc(user.email).update({
+                 'isAuthorized': true,
+                 'role': 'member',
+               });
+           } else {
+               await _firestore.collection('members').doc(user.email).update({
+                 'isAuthorized': true,
+                 'role': 'wallet_only',
+               });
            }
         }
         
-        return isAuthorized;
+        return true;
       } else {
-        QuerySnapshot membersCount = await _firestore.collection('members').get();
-        bool isAdmin = membersCount.docs.isEmpty; 
+        QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
+        List<DocumentSnapshot> messMembers = membersSnapshot.docs
+            .where((d) => (d.data() as Map<String, dynamic>?)?['role'] != 'wallet_only')
+            .toList();
         
-        if (membersCount.docs.length >= 8) {
-          debugPrint("Registration full. Maximum 8 members allowed.");
-          return false;
+        bool isAdmin = messMembers.isEmpty; 
+        String assignedRole = 'wallet_only';
+
+        if (isAdmin) {
+          assignedRole = 'admin';
+        } else if (messMembers.length < 8) {
+          assignedRole = 'member';
+        } else {
+          assignedRole = 'wallet_only'; // 🚀 9th user onwards becomes wallet_only user!
         }
 
         MemberModel newMember = MemberModel(
           uid: user.uid,
           name: user.displayName ?? 'Unknown',
           email: user.email ?? '',
-          role: isAdmin ? 'admin' : 'member',
+          role: assignedRole,
           isAuthorized: true,
         );
 
@@ -86,15 +104,33 @@ class AuthService {
     try {
       DocumentSnapshot doc = await _firestore.collection('members').doc(currentUser!.email).get();
       if (doc.exists) {
-        bool isAuthorized = doc['isAuthorized'] ?? false;
-        return isAuthorized;
+        bool isAuthorized = doc['isAuthorized'] ?? true;
+        if (!isAuthorized) {
+          return await checkAndCreateUserProfile(currentUser!);
+        }
+        return true;
       } else {
-         return await checkAndCreateUserProfile(currentUser!);
+        return await checkAndCreateUserProfile(currentUser!);
       }
     } catch (e) {
       debugPrint("Error checking current user auth: $e");
       return false;
     }
+  }
+
+  // Get current user's role ('admin', 'member', or 'wallet_only')
+  Future<String> getCurrentUserRole() async {
+    if (currentUser == null || currentUser!.email == null) return 'guest';
+    
+    try {
+      DocumentSnapshot doc = await _firestore.collection('members').doc(currentUser!.email).get();
+      if (doc.exists) {
+        return (doc['role'] ?? 'member').toString().toLowerCase();
+      }
+    } catch (e) {
+      debugPrint("Error getting current user role: $e");
+    }
+    return 'member';
   }
 
   Future<void> signOut() async {
