@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Mess Manager Admin</title>
+    <link rel="stylesheet" href="css/style.css">
+    <!-- Chart.js CDN for Analytics Visualizations -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="app-layout">
+        <aside class="sidebar">
+            <div class="logo">
+                <span class="brand-mark" aria-hidden="true">M</span>
+                <span class="brand-copy">
+                    <span class="brand-name">Mess Manager</span>
+                    <span class="brand-caption">ADMIN CONSOLE</span>
+                </span>
+            </div>
+            <nav class="nav-menu">
+                <button type="button" class="nav-item active" data-tab="overview" data-title="Dashboard Overview"><span class="nav-icon" aria-hidden="true">▦</span>Overview</button>
+                <button type="button" class="nav-item" data-tab="members" data-title="Members"><span class="nav-icon" aria-hidden="true">♙</span>Members</button>
+                <button type="button" class="nav-item" data-tab="expenses" data-title="Market Expenses"><span class="nav-icon" aria-hidden="true">◒</span>Market Expenses</button>
+                <button type="button" class="nav-item" data-tab="deposits" data-title="Deposits"><span class="nav-icon" aria-hidden="true">↗</span>Deposits</button>
+                <button type="button" class="nav-item" data-tab="meals" data-title="Monthly Meals"><span class="nav-icon" aria-hidden="true">▤</span>Monthly Meals</button>
+                <button type="button" class="nav-item" data-tab="wallet" data-title="Personal Records"><span class="nav-icon" aria-hidden="true">◈</span>Personal Records</button>
+                <button type="button" class="nav-item" data-tab="reports" data-title="Reports & Analytics"><span class="nav-icon" aria-hidden="true">▥</span>Reports & Analytics</button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="logout-btn" class="btn btn-danger"><span aria-hidden="true">↪</span>Logout</button>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <header class="top-bar">
+                <h1 id="page-title">Dashboard Overview</h1>
+                <div class="user-info">
+                    <img id="admin-avatar" class="user-avatar" style="display: none;" alt="Profile Photo" />
+                    <span id="admin-name">Admin</span>
+                    <span id="admin-email" class="badge">admin@email.com</span>
+                </div>
+            </header>
+
+            <section id="content-area" class="content-body">
+                <!-- Content Injected Dynamically -->
+            </section>
+        </main>
+    </div>
+
+    <!-- Firebase Web SDK & App Scripts -->
+    <script type="module" src="js/firebase.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
