@@ -14,12 +14,11 @@ class FinancialService {
     required double totalAmountInTaka,
     required String purchasedByEmail,
     required String paidByEmail,
-    required String paymentSource, // 'mess_fund' or 'personal'
-    required List<String> sharedBetweenEmails, // New Field
+    required String paymentSource,
+    required List<String> sharedBetweenEmails,
   }) async {
     try {
       DateTime now = DateTime.now();
-      String date = DateFormat('yyyy-MM-dd').format(now);
       String monthId = DateFormat('yyyy-MM').format(now);
       
       int amountInPaisa = (totalAmountInTaka * 100).round();
@@ -27,8 +26,8 @@ class FinancialService {
 
       ExpenseModel expense = ExpenseModel(
         id: docRef.id,
-        date: date,
         monthId: monthId,
+        date: DateFormat('yyyy-MM-dd').format(now),
         products: products,
         totalAmountInPaisa: amountInPaisa,
         purchasedByEmail: purchasedByEmail,
@@ -74,23 +73,18 @@ class FinancialService {
     }
   }
 
-  // Get Stream of Expenses for current month
+  // Get Stream of Expenses (All Market Expenses from Firestore)
   Stream<List<ExpenseModel>> getMonthlyExpenses() {
-    String currentMonthId = DateFormat('yyyy-MM').format(DateTime.now());
-    
     return _firestore
         .collection('expenses')
-        .where('monthId', isEqualTo: currentMonthId)
-        // .orderBy('createdAt', descending: true) // Removed to bypass Firebase Index requirement
         .snapshots()
         .map((snapshot) {
       
-      // 1. Convert Firestore documents to ExpenseModel List
       List<ExpenseModel> expenses = snapshot.docs
           .map((doc) => ExpenseModel.fromMap(doc.data(), doc.id))
           .toList();
       
-      // 2. Sort the list locally in Dart (newest first)
+      // Sort locally in Dart (newest first)
       expenses.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
       return expenses;
@@ -116,7 +110,6 @@ class FinancialService {
       int amountInPaisa = (amountInTaka * 100).round();
       DocumentReference docRef = _firestore.collection('deposits').doc();
 
-      // If an Admin adds it, it's auto-confirmed. If a member adds it, it's pending.
       String initialStatus = isAdmin ? 'confirmed' : 'pending';
       String confirmedBy = isAdmin ? addedByEmail : '';
 
@@ -139,22 +132,18 @@ class FinancialService {
     }
   }
 
-  // Get Stream of Deposits for current month
+  // Get Stream of Deposits (All Deposits from Firestore)
   Stream<List<DepositModel>> getMonthlyDeposits() {
-    String currentMonthId = DateFormat('yyyy-MM').format(DateTime.now());
-    
     return _firestore
         .collection('deposits')
-        .where('monthId', isEqualTo: currentMonthId)
         .snapshots()
         .map((snapshot) {
       
       List<DepositModel> deposits = snapshot.docs
           .map((doc) => DepositModel.fromMap(doc.data(), doc.id))
-          .where((deposit) => deposit.status != 'rejected') // 🚀 বাতিল করা জমাগুলো লিস্ট থেকে বাদ দেওয়া হলো
+          .where((deposit) => deposit.status != 'rejected')
           .toList();
       
-      // Sort locally in Dart (newest first) to bypass Firebase Index requirement
       deposits.sort((a, b) => b.createdAt.compareTo(a.createdAt));
       
       return deposits;
@@ -197,7 +186,7 @@ class FinancialService {
     try {
       await _firestore.collection('deposits').doc(depositId).update({
         'status': 'rejected',
-        'confirmedByAdminEmail': adminEmail, // Tracking who rejected it
+        'confirmedByAdminEmail': adminEmail,
       });
       return true;
     } catch (e) {
@@ -220,12 +209,12 @@ class FinancialService {
 
   // Get real-time Financial Summary for the dashboard
   Stream<Map<String, dynamic>> getFinancialSummary(String currentUserEmail) {
-    String currentMonthId = DateFormat('yyyy-MM').format(DateTime.now());
+    final String cleanEmail = currentUserEmail.toLowerCase().trim();
 
-    Stream<QuerySnapshot> expensesStream = _firestore.collection('expenses').where('monthId', isEqualTo: currentMonthId).snapshots();
+    Stream<QuerySnapshot> expensesStream = _firestore.collection('expenses').snapshots();
 
     return expensesStream.asyncMap((expenseSnapshot) async {
-      QuerySnapshot depositSnapshot = await _firestore.collection('deposits').where('monthId', isEqualTo: currentMonthId).get();
+      QuerySnapshot depositSnapshot = await _firestore.collection('deposits').get();
 
       List<ExpenseModel> expenses = expenseSnapshot.docs.map((doc) => ExpenseModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
       List<DepositModel> deposits = depositSnapshot.docs.map((doc) => DepositModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
@@ -243,11 +232,11 @@ class FinancialService {
       for (var expense in expenses) {
         totalExpensePaisa += expense.totalAmountInPaisa;
 
-        List<String> shared = expense.sharedBetweenEmails;
+        List<String> shared = expense.sharedBetweenEmails.map((s) => s.toLowerCase().trim()).toList();
         double expenseSharePaisa = 0.0;
         if (shared.isEmpty) {
           expenseSharePaisa = expense.totalAmountInPaisa / 8;
-        } else if (shared.contains(currentUserEmail)) {
+        } else if (shared.contains(cleanEmail)) {
           expenseSharePaisa = expense.totalAmountInPaisa / shared.length;
         }
 
@@ -260,7 +249,7 @@ class FinancialService {
 
         if (expense.paymentSource == 'mess_fund') {
           expensesFromMessFundPaisa += expense.totalAmountInPaisa;
-        } else if (expense.paymentSource == 'personal' && expense.paidByEmail == currentUserEmail) {
+        } else if (expense.paymentSource == 'personal' && expense.paidByEmail.toLowerCase().trim() == cleanEmail) {
           myPersonalAdvancesPaisa += expense.totalAmountInPaisa;
         }
       }
@@ -268,7 +257,7 @@ class FinancialService {
       for (var deposit in deposits) {
         if (deposit.status == 'confirmed') {
           totalConfirmedDepositsPaisa += deposit.amountInPaisa;
-          if (deposit.memberEmail == currentUserEmail) {
+          if (deposit.memberEmail.toLowerCase().trim() == cleanEmail) {
             myTotalDepositsPaisa += deposit.amountInPaisa;
           }
         }
@@ -290,8 +279,6 @@ class FinancialService {
 
   // Get balances for ALL members
   Future<List<Map<String, dynamic>>> getAllMembersBalances() async {
-    String currentMonthId = DateFormat('yyyy-MM').format(DateTime.now());
-
     try {
       QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
       List<MemberModel> allMembers = membersSnapshot.docs
@@ -299,34 +286,57 @@ class FinancialService {
           .where((member) => member.role != 'wallet_only')
           .toList();
 
-      QuerySnapshot expenseSnapshot = await _firestore.collection('expenses').where('monthId', isEqualTo: currentMonthId).get();
-      QuerySnapshot depositSnapshot = await _firestore.collection('deposits').where('monthId', isEqualTo: currentMonthId).get();
+      QuerySnapshot expenseSnapshot = await _firestore.collection('expenses').get();
+      QuerySnapshot depositSnapshot = await _firestore.collection('deposits').get();
 
       List<ExpenseModel> expenses = expenseSnapshot.docs.map((doc) => ExpenseModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
       List<DepositModel> deposits = depositSnapshot.docs.map((doc) => DepositModel.fromMap(doc.data() as Map<String, dynamic>, doc.id)).toList();
 
+      // 🚀 Smart Activity-Based Sorting: Prioritize Admin and members with active transactions/deposits
+      allMembers.sort((a, b) {
+        if (a.role == 'admin') return -1;
+        if (b.role == 'admin') return 1;
+
+        final aEmail = a.email.toLowerCase().trim();
+        final bEmail = b.email.toLowerCase().trim();
+
+        final aHasActivity = deposits.any((d) => d.memberEmail.toLowerCase().trim() == aEmail) ||
+            expenses.any((e) => e.paidByEmail.toLowerCase().trim() == aEmail || e.purchasedByEmail.toLowerCase().trim() == aEmail);
+        final bHasActivity = deposits.any((d) => d.memberEmail.toLowerCase().trim() == bEmail) ||
+            expenses.any((e) => e.paidByEmail.toLowerCase().trim() == bEmail || e.purchasedByEmail.toLowerCase().trim() == bEmail);
+
+        if (aHasActivity && !bHasActivity) return -1;
+        if (!aHasActivity && bHasActivity) return 1;
+
+        return a.name.compareTo(b.name);
+      });
+
+      // Keep top 8 active mess members
+      allMembers = allMembers.take(8).toList();
+
       List<Map<String, dynamic>> memberBalances = [];
 
       for (var member in allMembers) {
+        final memberCleanEmail = member.email.toLowerCase().trim();
         int myDepositsPaisa = 0;
         int myPersonalAdvancesPaisa = 0;
         double allocatedSharePaisa = 0.0;
 
         for (var deposit in deposits) {
-          if (deposit.status == 'confirmed' && deposit.memberEmail == member.email) {
+          if (deposit.status == 'confirmed' && deposit.memberEmail.toLowerCase().trim() == memberCleanEmail) {
             myDepositsPaisa += deposit.amountInPaisa;
           }
         }
 
         for (var expense in expenses) {
-          if (expense.paymentSource == 'personal' && expense.paidByEmail == member.email) {
+          if (expense.paymentSource == 'personal' && expense.paidByEmail.toLowerCase().trim() == memberCleanEmail) {
             myPersonalAdvancesPaisa += expense.totalAmountInPaisa;
           }
           
-          List<String> shared = expense.sharedBetweenEmails;
+          List<String> shared = expense.sharedBetweenEmails.map((s) => s.toLowerCase().trim()).toList();
           if (shared.isEmpty) {
              allocatedSharePaisa += expense.totalAmountInPaisa / 8;
-          } else if (shared.contains(member.email)) {
+          } else if (shared.contains(memberCleanEmail)) {
              allocatedSharePaisa += expense.totalAmountInPaisa / shared.length;
           }
         }

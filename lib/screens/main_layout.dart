@@ -2,17 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../core/constants/app_colors.dart';
-import '../services/auth_service.dart';
 import 'home_screen.dart';
 import 'market_screen.dart';
 import 'accounts_screen.dart';
 import 'members_screen.dart';
 import 'profile_screen.dart';
-import 'personal/personal_dashboard_screen.dart';
-import 'personal/personal_transactions_screen.dart';
-import 'personal/add_personal_transaction_screen.dart';
-import 'personal/personal_accounts_screen.dart';
 
+/// ============================================================================
+/// 📱 মেইন লেআউট স্ক্রিন (MainLayout) — Pure Mess Manager Edition
+/// ============================================================================
 class MainLayout extends StatefulWidget {
   const MainLayout({super.key});
 
@@ -21,109 +19,49 @@ class MainLayout extends StatefulWidget {
 }
 
 class _MainLayoutState extends State<MainLayout> {
-  final AuthService _authService = AuthService();
-
-  int _messIndex = 0;
-  int _personalIndex = 0;
-  bool _isPersonalModule = false; // Default to Mess Manager for mess members
-  bool _isWalletOnlyUser = false;
-  bool _isLoadingRole = true;
-
-  late final PageController _messPageController = PageController(initialPage: _messIndex);
-  late final PageController _personalPageController = PageController(initialPage: _personalIndex);
-
-  @override
-  void initState() {
-    super.initState();
-    _checkUserRole();
-  }
-
-  Future<void> _checkUserRole() async {
-    final String role = await _authService.getCurrentUserRole();
-    if (mounted) {
-      setState(() {
-        if (role == 'wallet_only') {
-          _isWalletOnlyUser = true;
-          _isPersonalModule = true; // Force Personal Wallet for 9th+ user
-        }
-        _isLoadingRole = false;
-      });
-    }
-  }
+  int _currentIndex = 0;
+  late final PageController _pageController = PageController(initialPage: _currentIndex);
 
   @override
   void dispose() {
-    _messPageController.dispose();
-    _personalPageController.dispose();
+    _pageController.dispose();
     super.dispose();
   }
 
-  void _toggleModule() {
-    if (_isWalletOnlyUser) return; // Wallet-only users cannot switch to Mess Manager
-    setState(() {
-      _isPersonalModule = !_isPersonalModule;
-    });
-  }
-
-  List<Widget> get _messScreens => [
-    HomeScreen(onToggleModule: _isWalletOnlyUser ? null : _toggleModule),
-    const MarketScreen(),
-    const AccountsScreen(),
-    const MembersScreen(),
-    const ProfileScreen(),
+  /// 🏠 মেস ম্যানেজার স্ক্রিনসমূহের লিস্ট
+  List<Widget> get _screens => const [
+    HomeScreen(),
+    MarketScreen(),
+    AccountsScreen(),
+    MembersScreen(),
+    ProfileScreen(),
   ];
 
-  List<Widget> get _personalScreens => [
-    PersonalDashboardScreen(onToggleModule: _isWalletOnlyUser ? null : _toggleModule),
-    const PersonalTransactionsScreen(),
-    const AddPersonalTransactionScreen(),
-    const PersonalAccountsScreen(),
-    const ProfileScreen(),
-  ];
-
-  int get _currentIndex => _isPersonalModule ? _personalIndex : _messIndex;
-  PageController get _activeController => _isPersonalModule ? _personalPageController : _messPageController;
-
+  /// 🔘 বটম ন্যাভিগেশন বারের ট্যাপ হ্যান্ডলার
   void _onTabSelected(int index) {
     if (_currentIndex == index) return;
 
     setState(() {
-      if (_isPersonalModule) {
-        _personalIndex = index;
-      } else {
-        _messIndex = index;
-      }
+      _currentIndex = index;
     });
 
-    _activeController.animateToPage(
+    _pageController.animateToPage(
       index,
       duration: const Duration(milliseconds: 300),
       curve: Curves.easeOutCubic,
     );
   }
 
+  /// 👈👉 ডানে-বামে সোয়াইপ করলে বটম বার সিঙ্ক করার মেথড
   void _onPageChanged(int index) {
     setState(() {
-      if (_isPersonalModule) {
-        _personalIndex = index;
-      } else {
-        _messIndex = index;
-      }
+      _currentIndex = index;
     });
   }
 
   @override
   Widget build(BuildContext context) {
     const Color primary = AppColors.primary;
-
-    if (_isLoadingRole) {
-      return const Scaffold(
-        backgroundColor: AppColors.background,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.primary),
-        ),
-      );
-    }
 
     return PopScope(
       canPop: false,
@@ -139,10 +77,10 @@ class _MainLayoutState extends State<MainLayout> {
       child: Scaffold(
         extendBody: true,
         body: PageView(
-          controller: _activeController,
+          controller: _pageController,
           onPageChanged: _onPageChanged,
           physics: const BouncingScrollPhysics(),
-          children: _isPersonalModule ? _personalScreens : _messScreens,
+          children: _screens,
         ),
         bottomNavigationBar: Container(
           decoration: BoxDecoration(
@@ -189,61 +127,33 @@ class _MainLayoutState extends State<MainLayout> {
                 elevation: 0,
                 labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
                 onDestinationSelected: _onTabSelected,
-                destinations: _isPersonalModule
-                    ? const [
-                        NavigationDestination(
-                          icon: Icon(Icons.dashboard_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.dashboard_rounded, color: primary),
-                          label: 'হোম',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.receipt_long_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.receipt_long_rounded, color: primary),
-                          label: 'লেনদেন',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.add_circle_outline_rounded, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.add_circle_rounded, color: primary),
-                          label: 'যোগ করুন',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: primary),
-                          label: 'ওয়ালেট',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.person_outline_rounded, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.person_rounded, color: primary),
-                          label: 'প্রোফাইল',
-                        ),
-                      ]
-                    : const [
-                        NavigationDestination(
-                          icon: Icon(Icons.dashboard_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.dashboard_rounded, color: primary),
-                          label: 'ড্যাশবোর্ড',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.shopping_cart_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.shopping_cart_rounded, color: primary),
-                          label: 'বাজার',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: primary),
-                          label: 'জমা',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.people_outline_rounded, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.people_rounded, color: primary),
-                          label: 'সদস্য',
-                        ),
-                        NavigationDestination(
-                          icon: Icon(Icons.person_outline_rounded, color: Color(0xFF969BB2)),
-                          selectedIcon: Icon(Icons.person_rounded, color: primary),
-                          label: 'প্রোফাইল',
-                        ),
-                      ],
+                destinations: const [
+                  NavigationDestination(
+                    icon: Icon(Icons.dashboard_outlined, color: Color(0xFF969BB2)),
+                    selectedIcon: Icon(Icons.dashboard_rounded, color: primary),
+                    label: 'ড্যাশবোর্ড',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.shopping_cart_outlined, color: Color(0xFF969BB2)),
+                    selectedIcon: Icon(Icons.shopping_cart_rounded, color: primary),
+                    label: 'বাজার',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.account_balance_wallet_outlined, color: Color(0xFF969BB2)),
+                    selectedIcon: Icon(Icons.account_balance_wallet_rounded, color: primary),
+                    label: 'জমা',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.people_outline_rounded, color: Color(0xFF969BB2)),
+                    selectedIcon: Icon(Icons.people_rounded, color: primary),
+                    label: 'সদস্য',
+                  ),
+                  NavigationDestination(
+                    icon: Icon(Icons.person_outline_rounded, color: Color(0xFF969BB2)),
+                    selectedIcon: Icon(Icons.person_rounded, color: primary),
+                    label: 'প্রোফাইল',
+                  ),
+                ],
               ),
             ),
           ),
@@ -252,6 +162,7 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 
+  /// 🚪 অ্যাপ বন্ধ করার নিশ্চয়তা ডায়ালগ
   void _showExitDialog(BuildContext context) async {
     final bool? shouldExit = await showDialog<bool>(
       context: context,

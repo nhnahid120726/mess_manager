@@ -3,8 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/member_model.dart';
+import 'notification_service.dart';
 
 class AuthService {
+  static const Set<String> _adminEmails = {
+    'anondoroyn2006@gmail.com',
+    'nahid3052026@gmail.com',
+  };
+
   final FirebaseAuth _auth = FirebaseAuth.instance;
   
   final GoogleSignIn _googleSignIn = GoogleSignIn(
@@ -35,60 +41,52 @@ class AuthService {
     }
   }
 
-  // Check if user is authorized and create profile if needed
+  // Check if user is authorized and enforce strict 8-member limit
   Future<bool> checkAndCreateUserProfile(User user) async {
     try {
-      DocumentSnapshot doc = await _firestore.collection('members').doc(user.email).get();
+      // Save FCM Device Token for push notifications
+      NotificationService().saveDeviceToken();
+
+      final cleanEmail = (user.email ?? '').toLowerCase().trim();
+      if (cleanEmail.isEmpty) return false;
+
+      DocumentSnapshot doc = await _firestore.collection('members').doc(cleanEmail).get();
 
       if (doc.exists) {
-        bool isAuthorized = doc['isAuthorized'] ?? true;
-        
-        if (!isAuthorized) {
-           QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
-           int messMembersCount = membersSnapshot.docs
-               .where((d) => (d.data() as Map<String, dynamic>?)?['role'] != 'wallet_only')
-               .length;
-           
-           if (messMembersCount < 8) {
-               await _firestore.collection('members').doc(user.email).update({
-                 'isAuthorized': true,
-                 'role': 'member',
-               });
-           } else {
-               await _firestore.collection('members').doc(user.email).update({
-                 'isAuthorized': true,
-                 'role': 'wallet_only',
-               });
-           }
+        if (_adminEmails.contains(cleanEmail) && doc['role'] != 'admin') {
+          await doc.reference.update({
+            'role': 'admin',
+            'isAuthorized': true,
+          });
+          return true;
         }
-        
-        return true;
+        // Registered existing member -> ALLOW
+        bool isAuthorized = doc['isAuthorized'] ?? true;
+        return isAuthorized;
       } else {
+        // New user attempting to sign in
         QuerySnapshot membersSnapshot = await _firestore.collection('members').get();
         List<DocumentSnapshot> messMembers = membersSnapshot.docs
             .where((d) => (d.data() as Map<String, dynamic>?)?['role'] != 'wallet_only')
             .toList();
-        
-        bool isAdmin = messMembers.isEmpty; 
-        String assignedRole = 'wallet_only';
 
-        if (isAdmin) {
-          assignedRole = 'admin';
-        } else if (messMembers.length < 8) {
-          assignedRole = 'member';
-        } else {
-          assignedRole = 'wallet_only'; // 🚀 9th user onwards becomes wallet_only user!
+        // 🚀 STRICT 8-MEMBER LIMIT BLOCK
+        if (messMembers.length >= 8) {
+          debugPrint("Registration blocked: Mess member limit (8 members) is full.");
+          return false; // Blocks Google Sign-In for 9th user!
         }
+
+        bool isAdmin = _adminEmails.contains(cleanEmail);
 
         MemberModel newMember = MemberModel(
           uid: user.uid,
-          name: user.displayName ?? 'Unknown',
-          email: user.email ?? '',
-          role: assignedRole,
+          name: user.displayName ?? 'ব্যবহারকারী',
+          email: cleanEmail,
+          role: isAdmin ? 'admin' : 'member',
           isAuthorized: true,
         );
 
-        await _firestore.collection('members').doc(user.email).set(newMember.toMap());
+        await _firestore.collection('members').doc(cleanEmail).set(newMember.toMap());
         return true;
       }
     } catch (e) {
@@ -97,40 +95,46 @@ class AuthService {
     }
   }
 
-  // Check if current logged in user is authorized
+  // Check current user role in Firestore
+  Future<String> getCurrentUserRole() async {
+    if (currentUser == null || currentUser!.email == null) return 'member';
+    final cleanEmail = currentUser!.email!.toLowerCase().trim();
+
+    try {
+      DocumentSnapshot doc = await _firestore.collection('members').doc(cleanEmail).get();
+      if (doc.exists) {
+        return (doc['role'] ?? 'member').toString();
+      }
+      return 'member';
+    } catch (e) {
+      return 'member';
+    }
+  }
+
+  // A standalone function to check if current logged in user is authorized
   Future<bool> isCurrentUserAuthorized() async {
     if (currentUser == null || currentUser!.email == null) return false;
     
     try {
-      DocumentSnapshot doc = await _firestore.collection('members').doc(currentUser!.email).get();
+      final cleanEmail = currentUser!.email!.toLowerCase().trim();
+      DocumentSnapshot doc = await _firestore.collection('members').doc(cleanEmail).get();
       if (doc.exists) {
-        bool isAuthorized = doc['isAuthorized'] ?? true;
-        if (!isAuthorized) {
-          return await checkAndCreateUserProfile(currentUser!);
+        if (_adminEmails.contains(cleanEmail) && doc['role'] != 'admin') {
+          await doc.reference.update({
+            'role': 'admin',
+            'isAuthorized': true,
+          });
+          return true;
         }
-        return true;
+        bool isAuthorized = doc['isAuthorized'] ?? true;
+        return isAuthorized;
       } else {
-        return await checkAndCreateUserProfile(currentUser!);
+         return await checkAndCreateUserProfile(currentUser!);
       }
     } catch (e) {
       debugPrint("Error checking current user auth: $e");
       return false;
     }
-  }
-
-  // Get current user's role ('admin', 'member', or 'wallet_only')
-  Future<String> getCurrentUserRole() async {
-    if (currentUser == null || currentUser!.email == null) return 'guest';
-    
-    try {
-      DocumentSnapshot doc = await _firestore.collection('members').doc(currentUser!.email).get();
-      if (doc.exists) {
-        return (doc['role'] ?? 'member').toString().toLowerCase();
-      }
-    } catch (e) {
-      debugPrint("Error getting current user role: $e");
-    }
-    return 'member';
   }
 
   Future<void> signOut() async {

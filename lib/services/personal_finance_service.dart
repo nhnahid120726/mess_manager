@@ -12,13 +12,15 @@ class PersonalFinanceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  String? get currentEmail => _auth.currentUser?.email;
+  String? get currentEmail => _auth.currentUser?.email?.toLowerCase().trim();
+  String? get rawEmail => _auth.currentUser?.email?.trim();
   String? get currentUid => _auth.currentUser?.uid;
 
   // Collection Reference Helper - Uses personal_records/{userEmail}/... matching your Firestore Rules & Database!
-  CollectionReference? _userSubCollection(String collectionName) {
-    if (currentEmail == null) return null;
-    return _firestore.collection('personal_records').doc(currentEmail!).collection(collectionName);
+  CollectionReference? _userSubCollection(String collectionName, [String? overrideEmail]) {
+    final email = overrideEmail ?? currentEmail;
+    if (email == null || email.isEmpty) return null;
+    return _firestore.collection('personal_records').doc(email).collection(collectionName);
   }
 
   // ==========================================
@@ -30,17 +32,31 @@ class PersonalFinanceService {
     if (ref == null) return Stream.value([]);
 
     return ref.snapshots().asyncMap((snapshot) async {
-      if (snapshot.docs.isEmpty) {
-        // Create Default Wallets if user has none
-        await _createDefaultAccounts();
-        final newSnap = await ref.get();
-        return newSnap.docs
-            .map((doc) => PersonalAccountModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
-            .where((acc) => !acc.isArchived)
-            .toList();
+      List<QueryDocumentSnapshot> docs = snapshot.docs.toList();
+
+      if (docs.isEmpty && rawEmail != null && rawEmail != currentEmail) {
+        final altRef = _userSubCollection('personalAccounts', rawEmail);
+        if (altRef != null) {
+          final altSnap = await altRef.get();
+          if (altSnap.docs.isNotEmpty) docs = altSnap.docs;
+        }
       }
 
-      return snapshot.docs
+      if (docs.isEmpty) {
+        final altRef = _userSubCollection('accounts');
+        if (altRef != null) {
+          final altSnap = await altRef.get();
+          if (altSnap.docs.isNotEmpty) docs = altSnap.docs;
+        }
+      }
+
+      if (docs.isEmpty) {
+        await _createDefaultAccounts();
+        final newSnap = await ref.get();
+        docs = newSnap.docs.toList();
+      }
+
+      return docs
           .map((doc) => PersonalAccountModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .where((acc) => !acc.isArchived)
           .toList();
@@ -124,6 +140,11 @@ class PersonalFinanceService {
     final ref = _userSubCollection('personalAccounts');
     final txRef = _userSubCollection('transactions');
     if (ref == null || txRef == null || currentUid == null) return false;
+    if (sourceAccountId == destinationAccountId ||
+        !amountInTaka.isFinite ||
+        amountInTaka <= 0) {
+      return false;
+    }
 
     int amountPaisa = (amountInTaka * 100).round();
     if (amountPaisa <= 0) return false;
@@ -139,6 +160,9 @@ class PersonalFinanceService {
 
         int sourceBalance = sourceDoc['currentBalancePaisa'] ?? 0;
         int destBalance = destDoc['currentBalancePaisa'] ?? 0;
+        if (sourceBalance < amountPaisa) {
+          throw Exception("Insufficient source account balance");
+        }
 
         transaction.update(ref.doc(sourceAccountId), {
           'currentBalancePaisa': sourceBalance - amountPaisa,
@@ -181,8 +205,26 @@ class PersonalFinanceService {
     final ref = _userSubCollection('transactions');
     if (ref == null) return Stream.value([]);
 
-    return ref.snapshots().map((snapshot) {
-      final list = snapshot.docs
+    return ref.snapshots().asyncMap((snapshot) async {
+      List<QueryDocumentSnapshot> docs = snapshot.docs.toList();
+
+      if (docs.isEmpty && rawEmail != null && rawEmail != currentEmail) {
+        final altRef = _userSubCollection('transactions', rawEmail);
+        if (altRef != null) {
+          final altSnap = await altRef.get();
+          if (altSnap.docs.isNotEmpty) docs = altSnap.docs;
+        }
+      }
+
+      if (docs.isEmpty) {
+        final altRef = _userSubCollection('personalTransactions');
+        if (altRef != null) {
+          final altSnap = await altRef.get();
+          if (altSnap.docs.isNotEmpty) docs = altSnap.docs;
+        }
+      }
+
+      final list = docs
           .map((doc) => PersonalTransactionModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
           .toList();
       list.sort((a, b) => b.transactionDate.compareTo(a.transactionDate));
@@ -193,7 +235,7 @@ class PersonalFinanceService {
   Future<bool> addTransaction(PersonalTransactionModel tx) async {
     final ref = _userSubCollection('transactions');
     final accRef = _userSubCollection('personalAccounts');
-    if (ref == null || accRef == null) return false;
+    if (ref == null || accRef == null || tx.amountPaisa <= 0) return false;
 
     try {
       String accountId = tx.sourceAccountId.isNotEmpty ? tx.sourceAccountId : 'cash_wallet';
@@ -256,14 +298,7 @@ class PersonalFinanceService {
 
       return true;
     } catch (e) {
-      // Direct fallback save if transaction fails
-      try {
-        final newDoc = ref.doc();
-        await newDoc.set(tx.toMap());
-        return true;
-      } catch (err) {
-        return false;
-      }
+      return false;
     }
   }
 
@@ -274,7 +309,25 @@ class PersonalFinanceService {
 
     try {
       await _firestore.runTransaction((transaction) async {
-        final accDoc = await transaction.get(accRef.doc(tx.sourceAccountId));
+        final sourceRef = accRef.doc(tx.sourceAccountId);
+        final accDoc = await transaction.get(sourceRef);
+        DocumentSnapshot? destinationDoc;
+        String? destinationAccountId;
+
+        if (tx.type == 'transfer') {
+          destinationAccountId = tx.destinationAccountId;
+          if (destinationAccountId == null ||
+              destinationAccountId.isEmpty ||
+              destinationAccountId == tx.sourceAccountId) {
+            throw Exception("Invalid transfer accounts");
+          }
+          destinationDoc =
+              await transaction.get(accRef.doc(destinationAccountId));
+          if (!accDoc.exists || !destinationDoc.exists) {
+            throw Exception("Transfer account not found");
+          }
+        }
+
         if (accDoc.exists) {
           int currentBalance = accDoc['currentBalancePaisa'] ?? 0;
           int delta = 0;
@@ -283,10 +336,22 @@ class PersonalFinanceService {
             delta = -tx.amountPaisa;
           } else if (tx.type == 'expense' || tx.type == 'debt_repayment' || tx.type == 'savings_contribution') {
             delta = tx.amountPaisa;
+          } else if (tx.type == 'transfer') {
+            delta = tx.amountPaisa;
           }
 
-          transaction.update(accRef.doc(tx.sourceAccountId), {
+          transaction.update(sourceRef, {
             'currentBalancePaisa': currentBalance + delta,
+          });
+        }
+
+        if (destinationDoc != null && destinationAccountId != null) {
+          final destinationData =
+              destinationDoc.data() as Map<String, dynamic>? ?? {};
+          final destinationBalance =
+              (destinationData['currentBalancePaisa'] as num? ?? 0).toInt();
+          transaction.update(accRef.doc(destinationAccountId), {
+            'currentBalancePaisa': destinationBalance - tx.amountPaisa,
           });
         }
 

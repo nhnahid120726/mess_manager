@@ -192,8 +192,20 @@ class _PersonalTransactionsScreenState extends State<PersonalTransactionsScreen>
                                             ) ??
                                             false;
 
-                                        if (confirm) {
-                                          await _financeService.deleteTransaction(tx);
+                                        if (!context.mounted || !confirm) return;
+
+                                        final deleted = await _financeService
+                                            .deleteTransaction(tx);
+                                        if (!context.mounted) return;
+                                        if (!deleted) {
+                                          ScaffoldMessenger.of(context)
+                                              .showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'লেনদেন মুছে ফেলা যায়নি। ব্যালেন্স পরিবর্তন করা হয়নি।',
+                                              ),
+                                            ),
+                                          );
                                         }
                                       },
                                     ),

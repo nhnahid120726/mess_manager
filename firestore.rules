@@ -2,57 +2,150 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Check if logged in
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Check if the user is an Admin
+    function currentEmail() {
+      return request.auth.token.email.lower();
+    }
+
+    function isUserEmail(email) {
+      return isAuthenticated() &&
+        currentEmail() == email.lower();
+    }
+
+    function isConfiguredAdminEmail(email) {
+      return email.lower() in [
+        'anondoroyn2006@gmail.com',
+        'nahid3052026@gmail.com'
+      ];
+    }
+
     function isAdmin() {
       return isAuthenticated() &&
-             get(/databases/$(database)/documents/members/$(request.auth.token.email)).data.role == 'admin';
+        isConfiguredAdminEmail(currentEmail()) &&
+        exists(/databases/$(database)/documents/members/$(currentEmail())) &&
+        get(/databases/$(database)/documents/members/$(currentEmail())).data.role == 'admin' &&
+        get(/databases/$(database)/documents/members/$(currentEmail())).data.isAuthorized == true;
     }
 
-    // 1. MEMBERS COLLECTION
+    function isAuthorizedMember() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/members/$(currentEmail())) &&
+        get(/databases/$(database)/documents/members/$(currentEmail())).data.isAuthorized == true;
+    }
+
     match /members/{email} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && request.auth.token.email == email;
-      allow update: if isAdmin() || (isAuthenticated() && request.auth.token.email == email);
-      allow delete: if false; // Nobody can delete members
-    }
-
-    // 2. EXPENSES COLLECTION
-    match /expenses/{expenseId} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin(); // Only Admin can add/edit expenses
-      allow delete: if false; // Financial records should not be deleted
-    }
-
-    // 3. DEPOSITS COLLECTION
-    match /deposits/{depositId} {
-      allow read: if isAuthenticated();
-      // Any member can create a deposit (request), Admin can update (confirm)
-      allow create: if isAuthenticated();
-      allow update: if isAdmin();
+      allow create: if isUserEmail(email) &&
+        request.resource.data.keys().hasAll(['name', 'email', 'role', 'isAuthorized']) &&
+        request.resource.data.keys().hasOnly(['name', 'email', 'role', 'isAuthorized']) &&
+        request.resource.data.email.lower() == email.lower() &&
+        request.resource.data.isAuthorized == true &&
+        ((isConfiguredAdminEmail(email) && request.resource.data.role == 'admin') ||
+         (!isConfiguredAdminEmail(email) && request.resource.data.role == 'member'));
+      allow update: if isAdmin() ||
+        (isUserEmail(email) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'fcmToken',
+            'lastTokenUpdate'
+          ])) ||
+        (isUserEmail(email) &&
+          isConfiguredAdminEmail(email) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+            'role',
+            'isAuthorized'
+          ]) &&
+          request.resource.data.role == 'admin' &&
+          request.resource.data.isAuthorized == true);
       allow delete: if false;
     }
 
-    // 4. MONTHLY MEALS COLLECTION
+    match /expenses/{expenseId} {
+      allow read: if isAuthorizedMember();
+      allow create: if isAuthorizedMember() &&
+        request.resource.data.keys().hasAll([
+          'date',
+          'monthId',
+          'products',
+          'totalAmountInPaisa',
+          'purchasedByEmail',
+          'paidByEmail',
+          'paymentSource',
+          'sharedBetweenEmails',
+          'createdAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'date',
+          'monthId',
+          'products',
+          'totalAmountInPaisa',
+          'purchasedByEmail',
+          'paidByEmail',
+          'paymentSource',
+          'sharedBetweenEmails',
+          'createdAt'
+        ]) &&
+        request.resource.data.totalAmountInPaisa is int &&
+        request.resource.data.totalAmountInPaisa > 0 &&
+        request.resource.data.paymentSource in ['mess_fund', 'personal'] &&
+        (isAdmin() ||
+          isUserEmail(request.resource.data.purchasedByEmail) ||
+          isUserEmail(request.resource.data.paidByEmail));
+      allow update, delete: if isAdmin();
+    }
+
+    match /deposits/{depositId} {
+      allow read: if isAuthorizedMember();
+      allow create: if isAuthorizedMember() &&
+        request.resource.data.keys().hasAll([
+          'monthId',
+          'memberEmail',
+          'amountInPaisa',
+          'paymentMethod',
+          'status',
+          'confirmedByAdminEmail',
+          'createdAt'
+        ]) &&
+        request.resource.data.keys().hasOnly([
+          'monthId',
+          'memberEmail',
+          'amountInPaisa',
+          'paymentMethod',
+          'status',
+          'confirmedByAdminEmail',
+          'createdAt'
+        ]) &&
+        request.resource.data.amountInPaisa is int &&
+        request.resource.data.amountInPaisa > 0 &&
+        ((isAdmin() &&
+          request.resource.data.status == 'confirmed' &&
+          isUserEmail(request.resource.data.confirmedByAdminEmail)) ||
+         (!isAdmin() &&
+          isUserEmail(request.resource.data.memberEmail) &&
+          request.resource.data.status == 'pending' &&
+          request.resource.data.confirmedByAdminEmail == ''));
+      allow update: if isAdmin() &&
+        resource.data.status == 'pending' &&
+        request.resource.data.status in ['confirmed', 'rejected'] &&
+        isUserEmail(request.resource.data.confirmedByAdminEmail) &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'status',
+          'confirmedByAdminEmail'
+        ]);
+      allow delete: if false;
+    }
+
     match /monthly_meals/{monthId} {
-      allow read: if isAuthenticated();
-      allow write: if isAdmin(); // Only Admin can change meal counts
+      allow read: if isAuthorizedMember();
+      allow write: if isAdmin();
     }
 
-    // ==============================================================
-    // 5. PERSONAL RECORDS COLLECTION (ব্যক্তিগত আয়-ব্যয় এবং কাজের তালিকা)
-    // ==============================================================
     match /personal_records/{userEmail}/{document=**} {
-      // শুধুমাত্র সেই ইউজারই তার ডেটা দেখতে এবং পরিবর্তন করতে পারবে, যার ইমেইল দিয়ে ফোল্ডারটি তৈরি হয়েছে।
-      // মেসের Admin বা অন্য কোনো সদস্য এই ডেটা দেখতে পারবে না। 100% Private!
-      allow read, write: if isAuthenticated() && request.auth.token.email == userEmail;
+      allow read, write: if isAuthorizedMember() && isUserEmail(userEmail);
     }
 
-    // Block everything else
     match /{document=**} {
       allow read, write: if false;
     }

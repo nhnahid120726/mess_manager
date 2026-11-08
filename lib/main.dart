@@ -1,29 +1,46 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'core/constants/app_colors.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
 import 'screens/main_layout.dart';
-import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 
+/// ============================================================================
+/// 🚀 অ্যাপ মেইন এন্ট্রি পয়েন্ট (Main Entry Point)
+/// ============================================================================
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // ১. ফায়ারবেস সার্ভিস কোর ইনিশিয়ালাইজেশন
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // ২. ডেট ফরম্যাটিং ইনিশিয়ালাইজেশন (বাংলা সহ সব লোকাল ডেটার জন্য)
+  await initializeDateFormatting();
+  
+  // ৩. পুশ নোটিফিকেশন সার্ভিস ইনিশিয়ালাইজেশন
+  await NotificationService().initialize();
+  
   runApp(const MessApp());
 }
 
+/// ============================================================================
+/// 🎨 রুট উইজেট (MessApp) - থিম ও টাইপোগ্রাফি
+/// ============================================================================
 class MessApp extends StatelessWidget {
   const MessApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Mess Management App',
+      title: 'Mess Manager & Personal Wallet',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1E3A8A)),
+        colorScheme: ColorScheme.fromSeed(seedColor: AppColors.primary),
         fontFamily: 'NotoSansBengali',
         useMaterial3: true,
       ),
@@ -32,54 +49,37 @@ class MessApp extends StatelessWidget {
   }
 }
 
-// A dedicated Wrapper to handle both Authentication and Authorization states
-class AuthWrapper extends StatefulWidget {
+/// ============================================================================
+/// 🔐 অথেন্টিকেশন র‍্যাপার (AuthWrapper)
+/// ============================================================================
+/// - ফায়ারবেস অথেন্টিকেশন স্টেট ট্র্যাক করে সেশন কন্ট্রোল করে।
+/// - ইউজারের সেশন অ্যাক্টিভ থাকলে সরাসরি `MainLayout()` লোড করবে।
+/// - ইউজার লগআউট থাকলে `LoginScreen()` দেখাবে।
+class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
-
-  @override
-  State<AuthWrapper> createState() => _AuthWrapperState();
-}
-
-class _AuthWrapperState extends State<AuthWrapper> {
-  final AuthService _authService = AuthService();
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snapshot) {
+        // লোডিং স্টেট
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(body: Center(child: CircularProgressIndicator(color: Color(0xFF1E3A8A))));
-        }
-        
-        // If user is NOT logged in
-        if (!snapshot.hasData || snapshot.data == null) {
-          return const LoginScreen();
+          return const Scaffold(
+            backgroundColor: AppColors.background,
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          );
         }
 
-        // If user IS logged in, we must check if they are authorized in Firestore
-        // FutureBuilder handles the async check
-        return FutureBuilder<bool>(
-          future: _authService.isCurrentUserAuthorized(),
-          builder: (context, authSnapshot) {
-            if (authSnapshot.connectionState == ConnectionState.waiting) {
-               return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.teal)));
-            }
-            
-            bool isAuthorized = authSnapshot.data ?? false;
-            
-            if (isAuthorized) {
-              return const MainLayout();
-            } else {
-              // User is logged in to Google but not authorized in our database
-              // We should force sign out so they return to LoginScreen
-              WidgetsBinding.instance.addPostFrameCallback((_) {
-                _authService.signOut();
-              });
-              return const Scaffold(body: Center(child: CircularProgressIndicator(color: Colors.red)));
-            }
-          },
-        );
+        // ইউজার লগইন থাকলে সরাসরি মেইন লেআউট লোড
+        if (snapshot.hasData && snapshot.data != null) {
+          return const MainLayout();
+        }
+
+        // ইউজার লগআউট থাকলে লগইন স্ক্রিন লোড
+        return const LoginScreen();
       },
     );
   }
