@@ -68,7 +68,9 @@ class _MainLayoutState extends State<MainLayout> {
       onPopInvokedWithResult: (bool didPop, Object? result) {
         if (didPop) return;
 
-        if (_currentIndex != 0) {
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop();
+        } else if (_currentIndex != 0) {
           _onTabSelected(0);
         } else {
           _showExitDialog(context);
